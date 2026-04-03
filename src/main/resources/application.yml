@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: clientefacil
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clientefacil
+    username: postgres
+    password: admin
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  flyway:
+    enabled: true
