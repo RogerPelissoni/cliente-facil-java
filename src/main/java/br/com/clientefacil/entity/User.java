@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "\"user\"") // palavra reservada no PostgreSQL
+@Table(name = "users")
 @Getter
 @Setter
 public class User {
