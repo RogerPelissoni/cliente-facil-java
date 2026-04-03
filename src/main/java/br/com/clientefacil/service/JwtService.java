@@ -14,14 +14,14 @@ public class JwtService {
     // Chave secreta gerada automaticamente
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
-    // Expiração do token (ex: 1 hora)
-    private final long expirationMillis = 3600_000;
+    // Expiração do token: 1 hora
+    private final long EXPIRATION_MILLIS = 3600_000;
 
     public String generateToken(String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_MILLIS))
                 .signWith(key)
                 .compact();
     }
@@ -47,6 +47,7 @@ public class JwtService {
                 .parseClaimsJws(token)
                 .getBody()
                 .getExpiration();
+
         return expiration.before(new Date());
     }
 }

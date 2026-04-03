@@ -11,8 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class DataSeeder {
 
     @Bean
-    public CommandLineRunner seedUsers(UserRepository repository,
-                                       PasswordEncoder passwordEncoder) {
+    public CommandLineRunner seedUsers(
+            UserRepository repository,
+            PasswordEncoder passwordEncoder
+    ) {
         return args -> {
 
             // evita duplicação
