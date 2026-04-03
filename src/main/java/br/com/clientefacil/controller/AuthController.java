@@ -1,20 +1,23 @@
 package br.com.clientefacil.controller;
 
-import br.com.clientefacil.security.JwtUtil;
+import br.com.clientefacil.dto.AuthRequest;
+import br.com.clientefacil.dto.AuthResponse;
+import br.com.clientefacil.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private final AuthService service;
+
+    public AuthController(AuthService service) {
+        this.service = service;
+    }
+
     @PostMapping("/login")
-    public String login(@RequestParam String username,
-                        @RequestParam String password) {
-
-        if ("admin".equals(username) && "123".equals(password)) {
-            return JwtUtil.generateToken(username);
-        }
-
-        throw new RuntimeException("Credenciais inválidas");
+    public AuthResponse login(@RequestBody @Valid AuthRequest request) {
+        return service.login(request);
     }
 }
