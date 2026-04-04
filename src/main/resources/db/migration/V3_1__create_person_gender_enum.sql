@@ -1,0 +1,1 @@
+CREATE TYPE person_gender_enum AS ENUM ('M', 'F', 'O');
