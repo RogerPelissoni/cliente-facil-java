@@ -2,17 +2,22 @@ package br.com.clientefacil.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public record UserRequest(
 
-        @NotBlank
-        String name,
+        @NotBlank String name,
 
-        @Email
-        @NotBlank
-        String email,
+        @Email(message = "Email inválido")
+        @NotBlank String email,
 
         @NotBlank
-        String password
+        @Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
+        String password,
+
+        @NotNull Long personId,
+
+        @NotNull Long profileId
 ) {
 }

@@ -20,7 +20,7 @@ public class Company {
     private String name;
 
     @ManyToOne
-    @JoinColumn(name = "person_id", nullable = false)
+    @JoinColumn(name = "person_id")
     private Person person;
 
     @Embedded
