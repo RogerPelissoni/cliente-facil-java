@@ -26,67 +26,42 @@ public class DataSeeder {
             PasswordEncoder passwordEncoder
     ) {
         return args -> {
-
-            // ========================================
-            // 1. COMPANY (SEM PERSON)
-            // ========================================
-            Company company = companyRepository.findByName("Cliente Fácil").orElseGet(() -> {
-                Company c = new Company();
-                c.setName("Cliente Fácil");
-                return companyRepository.save(c);
+            Company company = companyRepository.findByName("Cliente Facil").orElseGet(() -> {
+                Company createdCompany = new Company();
+                createdCompany.setName("Cliente Facil");
+                return companyRepository.save(createdCompany);
             });
 
-            // ========================================
-            // 2. PERSON (AGORA COM COMPANY VIA TENANT)
-            // ========================================
             Person person = personRepository.findByDsDocument("000.000.000-00").orElseGet(() -> {
-                Person p = new Person();
-                p.setName("Administrador Pessoa");
-                p.setDsDocument("000.000.000-00");
-                p.setTpGender(PersonGenderEnum.M);
-
-                // 🔥 ESSENCIAL
-                p.getTenant().setCompany(company);
-
-                return personRepository.save(p);
+                Person createdPerson = new Person();
+                createdPerson.setName("Administrador Pessoa");
+                createdPerson.setDsDocument("000.000.000-00");
+                createdPerson.setTpGender(PersonGenderEnum.M);
+                createdPerson.setCompanyId(company.getId());
+                return personRepository.save(createdPerson);
             });
 
-            // ========================================
-            // 3. ATUALIZA COMPANY COM PERSON
-            // ========================================
             if (company.getPerson() == null) {
                 company.setPerson(person);
                 companyRepository.save(company);
             }
 
-            // ========================================
-            // 4. PROFILE
-            // ========================================
             Profile profile = profileRepository.findByName("Admin").orElseGet(() -> {
-                Profile p = new Profile();
-                p.setName("Admin");
-
-                p.getTenant().setCompany(company);
-
-                return profileRepository.save(p);
+                Profile createdProfile = new Profile();
+                createdProfile.setName("Admin");
+                createdProfile.setCompanyId(company.getId());
+                return profileRepository.save(createdProfile);
             });
 
-            // ========================================
-            // 5. USER
-            // ========================================
             if (userRepository.findByEmail("admin@admin.com").isEmpty()) {
-                User userAdmin = new User();
-                userAdmin.setName("Administrador");
-                userAdmin.setEmail("admin@admin.com");
-                userAdmin.setPassword(passwordEncoder.encode("123456"));
-                userAdmin.setPerson(person);
-                userAdmin.setProfile(profile);
-
-                userAdmin.getTenant().setCompany(company);
-
-                userRepository.save(userAdmin);
-
-                System.out.println("✅ Usuário admin criado");
+                User adminUser = new User();
+                adminUser.setName("Administrador");
+                adminUser.setEmail("admin@admin.com");
+                adminUser.setPassword(passwordEncoder.encode("123456"));
+                adminUser.setPerson(person);
+                adminUser.setProfile(profile);
+                adminUser.setCompanyId(company.getId());
+                userRepository.save(adminUser);
             }
         };
     }

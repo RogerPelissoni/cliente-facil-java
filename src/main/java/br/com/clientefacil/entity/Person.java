@@ -1,7 +1,7 @@
 package br.com.clientefacil.entity;
 
+import br.com.clientefacil.entity.base.AbstractAuditableTenantEntity;
 import br.com.clientefacil.entity.enums.PersonGenderEnum;
-import br.com.clientefacil.listener.BaseEntityListener;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,10 +10,9 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "person")
-@EntityListeners(BaseEntityListener.class)
 @Getter
 @Setter
-public class Person {
+public class Person extends AbstractAuditableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,9 +29,6 @@ public class Person {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private PersonGenderEnum tpGender;
 
-    @Embedded
-    private Auditable auditable = new Auditable();
-
-    @Embedded
-    private Tenant tenant = new Tenant();
+    @Column(name = "fl_active", nullable = false)
+    private Boolean active = true;
 }

@@ -1,5 +1,6 @@
 package br.com.clientefacil.entity;
 
+import br.com.clientefacil.entity.base.AbstractAuditableTenantEntity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -9,7 +10,7 @@ import lombok.Setter;
 @Table(name = "users")
 @Getter
 @Setter
-public class User {
+public class User extends AbstractAuditableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,10 +33,4 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id", nullable = false)
     private Profile profile;
-
-    @Embedded
-    private Tenant tenant = new Tenant();
-
-    @Embedded
-    private Auditable auditable = new Auditable();
 }

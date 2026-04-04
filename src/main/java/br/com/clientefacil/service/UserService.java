@@ -19,21 +19,21 @@ public class UserService {
     private final PersonRepository personRepository;
     private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapper mapper; // injetando o mapper
+    private final UserMapper mapper;
 
     public UserResponse findById(Long id) {
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
 
-        return mapper.toResponse(user); // converte User -> UserResponse automaticamente
+        return mapper.toResponse(user);
     }
 
     public UserResponse create(UserRequest request) {
         var person = personRepository.findById(request.personId())
-                .orElseThrow(() -> new RuntimeException("Person não encontrada"));
+                .orElseThrow(() -> new RuntimeException("Person nao encontrada"));
 
         var profile = profileRepository.findById(request.profileId())
-                .orElseThrow(() -> new RuntimeException("Profile não encontrado"));
+                .orElseThrow(() -> new RuntimeException("Profile nao encontrado"));
 
         User user = new User();
         user.setName(request.name());

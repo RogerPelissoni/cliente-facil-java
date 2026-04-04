@@ -1,6 +1,7 @@
 package br.com.clientefacil.security;
 
 import br.com.clientefacil.service.JwtService;
+import br.com.clientefacil.service.AuthenticatedUserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     @Override
     protected void doFilterInternal(
@@ -36,20 +38,21 @@ public class JwtFilter extends OncePerRequestFilter {
                 String email = jwtService.extractEmail(token);
 
                 if (jwtService.isTokenValid(token, email)
-                        && SecurityContextHolder.getContext().getAuthentication() == null
-                ) {
+                        && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    AuthenticatedUser userDetails =
+                            authenticatedUserService.loadByEmail(email);
 
                     UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(email, null, null);
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-
-            } catch (Exception e) {
-//                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-//                response.getWriter().write("Token inválido ou expirado");
-//                return;
+            } catch (Exception ignored) {
             }
         }
 
