@@ -173,6 +173,15 @@ Resultado:
 - menos codigo repetido
 - menos chance de esquecer filtro em alguma query
 
+Complemento importante:
+- [TenantAwareRepositoryImpl.java](/E:/DeveloperContainer/Java/clientefacil/src/main/java/br/com/clientefacil/repository/support/TenantAwareRepositoryImpl.java) sobrescreve `findById` para entidades tenant-aware e evita o caminho que ignora filtro.
+- isso garante escopo automatico no `findById` sem repetir regra nos services.
+
+Sobre lazy load (`ManyToOne`) e SQL sem `company_id`:
+- em alguns carregamentos por PK, o Hibernate pode gerar SQL sem predicado de tenant.
+- para esse caso, existe uma barreira adicional em [AbstractAuditableTenantEntity.java](/E:/DeveloperContainer/Java/clientefacil/src/main/java/br/com/clientefacil/entity/base/AbstractAuditableTenantEntity.java) via `@PostLoad`.
+- se carregar entidade com `company_id` diferente do usuario, a aplicacao bloqueia com `403`.
+
 ### Desabilitar o filtro em casos especificos
 
 Para casos como relatorios gerenciais, voce pode desabilitar o filtro com `@SkipTenantFilter`.
@@ -204,6 +213,7 @@ public class RelatorioService {
 
 Observacao:
 - use com cuidado; esse bypass ignora o isolamento por empresa.
+- internamente, o bypass usa [TenantIsolationContext.java](/E:/DeveloperContainer/Java/clientefacil/src/main/java/br/com/clientefacil/security/TenantIsolationContext.java) para desativar tambem a validacao `@PostLoad` no escopo do metodo/classe anotado.
 
 ## 9) Seguranca e autenticacao JWT
 
@@ -293,6 +303,7 @@ Exemplo:
 [GlobalExceptionHandler.java](/E:/DeveloperContainer/Java/clientefacil/src/main/java/br/com/clientefacil/exception/GlobalExceptionHandler.java) trata:
 - validacao (`400`)
 - integridade de dados (`400`)
+- violacao de isolamento de tenant (`403`)
 - runtime generico (`500`)
 
 [CustomAuthenticationEntryPoint.java](/E:/DeveloperContainer/Java/clientefacil/src/main/java/br/com/clientefacil/security/CustomAuthenticationEntryPoint.java) trata nao autenticado (`401`).
@@ -569,3 +580,15 @@ Formato desta secao:
 - Regra no projeto:
 - se existe valor: dado pertence a uma empresa especifica.
 - se `null`: dado global.
+
+`TenantAwareRepositoryImpl`
+- Definicao: base repository customizada para aplicar comportamento tenant-aware no `findById`.
+- Serve para: manter escopo automatico sem repetir filtros no service.
+
+`@PostLoad` (neste projeto)
+- Definicao: callback de entidade executado apos carregar do banco.
+- Serve para: bloquear acesso cross-tenant mesmo quando SQL de lazy load vier sem predicado de tenant.
+
+`TenantIsolationContext`
+- Definicao: contexto thread-local de bypass de validacao de tenant.
+- Serve para: permitir excecoes controladas em metodos/classes com `@SkipTenantFilter`.

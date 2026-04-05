@@ -25,7 +25,12 @@ public class TenantFilterAspect {
     @Around("execution(public * br.com.clientefacil.service..*(..))")
     public Object applyTenantFilter(ProceedingJoinPoint joinPoint) throws Throwable {
         if (shouldSkipTenantFilter(joinPoint)) {
-            return joinPoint.proceed();
+            TenantIsolationContext.enableBypass();
+            try {
+                return joinPoint.proceed();
+            } finally {
+                TenantIsolationContext.disableBypass();
+            }
         }
 
         if (SecurityUtils.getCurrentUser().isEmpty()) {

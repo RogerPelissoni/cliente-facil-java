@@ -1,9 +1,11 @@
 package br.com.clientefacil.entity.base;
 
 import br.com.clientefacil.security.SecurityUtils;
+import br.com.clientefacil.security.TenantIsolationContext;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Transient;
 import lombok.Getter;
@@ -11,6 +13,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
+import org.springframework.security.access.AccessDeniedException;
 
 @MappedSuperclass
 @Getter
@@ -37,5 +40,18 @@ public abstract class AbstractAuditableTenantEntity extends AbstractAuditableEnt
         if (!globalScope && companyId == null) {
             SecurityUtils.getCurrentCompanyId().ifPresent(this::setCompanyId);
         }
+    }
+
+    @PostLoad
+    protected void enforceTenantIsolation() {
+        if (TenantIsolationContext.isBypassEnabled()) {
+            return;
+        }
+
+        SecurityUtils.getCurrentCompanyId().ifPresent(currentCompanyId -> {
+            if (companyId != null && !companyId.equals(currentCompanyId)) {
+                throw new AccessDeniedException("Tenant isolation violation");
+            }
+        });
     }
 }
