@@ -2,19 +2,17 @@ package br.com.clientefacil.service;
 
 import br.com.clientefacil.repository.UserRepository;
 import br.com.clientefacil.security.AuthenticatedUser;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AuthenticatedUserService {
 
     private final UserRepository repository;
-
-    public AuthenticatedUserService(UserRepository repository) {
-        this.repository = repository;
-    }
 
     public AuthenticatedUser loadByEmail(String email) {
         return repository.findByEmail(email)

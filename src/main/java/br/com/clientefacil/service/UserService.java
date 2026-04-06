@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -21,19 +23,17 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
 
-    public UserResponse findById(Long id) {
-        User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+    public List<UserResponse> findAll() {
+        return mapper.toResponseList(repository.findAll());
+    }
 
-        return mapper.toResponse(user);
+    public UserResponse findById(Long id) {
+        return mapper.toResponse(findUserById(id));
     }
 
     public UserResponse create(UserRequest request) {
-        var person = personRepository.findById(request.personId())
-                .orElseThrow(() -> new RuntimeException("Person nao encontrada"));
-
-        var profile = profileRepository.findById(request.profileId())
-                .orElseThrow(() -> new RuntimeException("Profile nao encontrado"));
+        var person = personRepository.getReferenceById(request.personId());
+        var profile = profileRepository.getReferenceById(request.profileId());
 
         User user = new User();
         user.setName(request.name());
@@ -45,5 +45,35 @@ public class UserService {
         User savedUser = repository.save(user);
 
         return mapper.toResponse(savedUser);
+    }
+
+    public UserResponse update(Long id, UserRequest request) {
+        User user = findUserById(id);
+
+        var person = personRepository.getReferenceById(request.personId());
+        var profile = profileRepository.getReferenceById(request.profileId());
+
+        user.setName(request.name());
+        user.setEmail(request.email());
+
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
+
+        user.setPerson(person);
+        user.setProfile(profile);
+
+        User updatedUser = repository.save(user);
+
+        return mapper.toResponse(updatedUser);
+    }
+
+    public void delete(Long id) {
+        repository.delete(findUserById(id));
+    }
+
+    private User findUserById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
     }
 }
