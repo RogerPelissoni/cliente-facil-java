@@ -1,24 +1,28 @@
 package br.com.clientefacil.core;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 public abstract class CoreController<TResponse, TId> {
 
-    protected abstract CoreService<?, TResponse, TId> getService();
+    protected abstract CoreCrudService<TResponse, TId> getService();
 
     @GetMapping
-    public Object findAll(
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size,
+    public List<TResponse> findAll() {
+        return getService().findAll();
+    }
+
+    @GetMapping("/paged")
+    public Page<TResponse> findAllPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sort,
             @RequestParam(defaultValue = "asc") String direction
     ) {
-        if (page != null && size != null) {
-            return getService().findAllPaged(page, size, sort, direction);
-        }
-
-        return getService().findAll();
+        return getService().findAllPaged(page, size, sort, direction);
     }
 
     @GetMapping("/{id}")

@@ -4,6 +4,7 @@ public record UserResponse(
         Long id,
         String name,
         String email,
-        String personName
+        String personName,
+        String profileName
 ) {
 }

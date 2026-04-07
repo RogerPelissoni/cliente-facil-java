@@ -1,7 +1,7 @@
 package br.com.clientefacil.controller;
 
 import br.com.clientefacil.core.CoreController;
-import br.com.clientefacil.core.CoreService;
+import br.com.clientefacil.core.CoreCrudService;
 import br.com.clientefacil.dto.CompanyRequest;
 import br.com.clientefacil.dto.CompanyResponse;
 import br.com.clientefacil.service.CompanyService;
@@ -17,7 +17,7 @@ public class CompanyController extends CoreController<CompanyResponse, Long> {
     private final CompanyService service;
 
     @Override
-    protected CoreService<?, CompanyResponse, Long> getService() {
+    protected CoreCrudService<CompanyResponse, Long> getService() {
         return service;
     }
 

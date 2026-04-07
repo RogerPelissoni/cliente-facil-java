@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class CompanyService extends CoreService<Company, CompanyResponse, Long> {
+public class CompanyService extends CoreService<Company, CompanyResponse, CompanyMapper, Long> {
 
     private final CompanyRepository repository;
     private final PersonRepository personRepository;
@@ -25,27 +25,31 @@ public class CompanyService extends CoreService<Company, CompanyResponse, Long> 
     }
 
     @Override
-    protected CompanyResponse toResponse(Company entity) {
-        return mapper.toResponse(entity);
+    protected CompanyMapper getMapper() {
+        return mapper;
+    }
+
+    @Override
+    protected String getEntityName() {
+        return "Empresa";
     }
 
     public CompanyResponse create(CompanyRequest request) {
-        var person = personRepository.getReferenceById(request.personId());
-
-        Company company = new Company();
-        company.setName(request.name());
-        company.setPerson(person);
-
-        return mapper.toResponse(repository.save(company));
+        Company entity = new Company();
+        fillEntityByRequest(entity, request);
+        return mapper.toResponse(repository.save(entity));
     }
 
     public CompanyResponse update(Long id, CompanyRequest request) {
-        Company company = findEntityById(id);
+        Company entity = findEntityById(id);
+        fillEntityByRequest(entity, request);
+        return mapper.toResponse(repository.save(entity));
+    }
+
+    private void fillEntityByRequest(Company entity, CompanyRequest request) {
         var person = personRepository.getReferenceById(request.personId());
 
-        company.setName(request.name());
-        company.setPerson(person);
-
-        return mapper.toResponse(repository.save(company));
+        entity.setName(request.name());
+        entity.setPerson(person);
     }
 }

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class UserService extends CoreService<User, UserResponse, Long> {
+public class UserService extends CoreService<User, UserResponse, UserMapper, Long> {
 
     private final UserRepository repository;
     private final PersonRepository personRepository;
@@ -29,8 +29,13 @@ public class UserService extends CoreService<User, UserResponse, Long> {
     }
 
     @Override
-    protected UserResponse toResponse(User entity) {
-        return mapper.toResponse(entity);
+    protected UserMapper getMapper() {
+        return mapper;
+    }
+
+    @Override
+    protected String getEntityName() {
+        return "Usuário";
     }
 
     public UserResponse create(UserRequest request) {
@@ -44,9 +49,7 @@ public class UserService extends CoreService<User, UserResponse, Long> {
         user.setPerson(person);
         user.setProfile(profile);
 
-        User savedUser = repository.save(user);
-
-        return mapper.toResponse(savedUser);
+        return mapper.toResponse(repository.save(user));
     }
 
     public UserResponse update(Long id, UserRequest request) {
@@ -65,8 +68,6 @@ public class UserService extends CoreService<User, UserResponse, Long> {
         user.setPerson(person);
         user.setProfile(profile);
 
-        User updatedUser = repository.save(user);
-
-        return mapper.toResponse(updatedUser);
+        return mapper.toResponse(repository.save(user));
     }
 }

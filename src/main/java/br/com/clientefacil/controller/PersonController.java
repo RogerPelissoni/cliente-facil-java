@@ -2,34 +2,34 @@ package br.com.clientefacil.controller;
 
 import br.com.clientefacil.core.CoreController;
 import br.com.clientefacil.core.CoreCrudService;
-import br.com.clientefacil.dto.UserRequest;
-import br.com.clientefacil.dto.UserResponse;
-import br.com.clientefacil.service.UserService;
+import br.com.clientefacil.dto.PersonRequest;
+import br.com.clientefacil.dto.PersonResponse;
+import br.com.clientefacil.service.PersonService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/person")
 @RequiredArgsConstructor
-public class UserController extends CoreController<UserResponse, Long> {
+public class PersonController extends CoreController<PersonResponse, Long> {
 
-    private final UserService service;
+    private final PersonService service;
 
     @Override
-    protected CoreCrudService<UserResponse, Long> getService() {
+    protected CoreCrudService<PersonResponse, Long> getService() {
         return service;
     }
 
     @PostMapping
-    public UserResponse create(@RequestBody @Valid UserRequest request) {
+    public PersonResponse create(@RequestBody @Valid PersonRequest request) {
         return service.create(request);
     }
 
     @PutMapping("/{id}")
-    public UserResponse update(
+    public PersonResponse update(
             @PathVariable Long id,
-            @RequestBody @Valid UserRequest request
+            @RequestBody @Valid PersonRequest request
     ) {
         return service.update(id, request);
     }

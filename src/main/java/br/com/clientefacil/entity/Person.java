@@ -30,5 +30,5 @@ public class Person extends AbstractAuditableTenantEntity {
     private PersonGenderEnum tpGender;
 
     @Column(name = "fl_active", nullable = false)
-    private Boolean active = true;
+    private Boolean flActive = true;
 }
