@@ -27,7 +27,10 @@ public class CompanyController extends CoreController<CompanyResponse, Long> {
     }
 
     @PutMapping("/{id}")
-    public CompanyResponse update(@PathVariable Long id, @RequestBody @Valid CompanyRequest request) {
+    public CompanyResponse update(
+            @PathVariable Long id,
+            @RequestBody @Valid CompanyRequest request
+    ) {
         return service.update(id, request);
     }
 }

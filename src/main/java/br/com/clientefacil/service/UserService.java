@@ -1,5 +1,6 @@
 package br.com.clientefacil.service;
 
+import br.com.clientefacil.core.CoreService;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.entity.User;
@@ -8,14 +9,13 @@ import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService extends CoreService<User, UserResponse, Long> {
 
     private final UserRepository repository;
     private final PersonRepository personRepository;
@@ -23,12 +23,14 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
 
-    public List<UserResponse> findAll() {
-        return mapper.toResponseList(repository.findAll());
+    @Override
+    protected JpaRepository<User, Long> getRepository() {
+        return repository;
     }
 
-    public UserResponse findById(Long id) {
-        return mapper.toResponse(findUserById(id));
+    @Override
+    protected UserResponse toResponse(User entity) {
+        return mapper.toResponse(entity);
     }
 
     public UserResponse create(UserRequest request) {
@@ -48,7 +50,7 @@ public class UserService {
     }
 
     public UserResponse update(Long id, UserRequest request) {
-        User user = findUserById(id);
+        User user = findEntityById(id);
 
         var person = personRepository.getReferenceById(request.personId());
         var profile = profileRepository.getReferenceById(request.profileId());
@@ -66,14 +68,5 @@ public class UserService {
         User updatedUser = repository.save(user);
 
         return mapper.toResponse(updatedUser);
-    }
-
-    public void delete(Long id) {
-        repository.delete(findUserById(id));
-    }
-
-    private User findUserById(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
     }
 }
