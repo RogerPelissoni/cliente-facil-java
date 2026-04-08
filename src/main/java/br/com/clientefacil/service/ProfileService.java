@@ -76,40 +76,41 @@ public class ProfileService extends CoreService<Profile, ProfileResponse, Profil
     }
 
     private void syncPermissions(Profile profile, ProfileRequest request) {
-        List<ProfilePermissionRequest> reqPermissions = Optional.ofNullable(request.profilePermissions()).orElse(Collections.emptyList());
+        List<ProfilePermissionRequest> requested = Optional.ofNullable(request.profilePermissions()).orElse(Collections.emptyList());
 
-        Map<Long, ProfilePermission> permissionByResourceId = profilePermissionRepository.findAllByProfileId(profile.getId())
+        Map<Long, ProfilePermission> existingByResourceId = profilePermissionRepository.findAllByProfileId(profile.getId())
                 .stream()
                 .collect(Collectors.toMap(
                         permission -> permission.getResource().getId(),
                         Function.identity()
                 ));
 
-        List<ProfilePermission> permissionsToSave = new ArrayList<>();
-        Set<Long> idsToDelete = new HashSet<>();
+        Set<Long> requestedResourceIds = requested.stream()
+                .map(ProfilePermissionRequest::idResource)
+                .collect(Collectors.toSet());
 
-        for (ProfilePermissionRequest item : reqPermissions) {
-            Long idResource = item.idResource();
-            idsToDelete.add(idResource);
-
-            ProfilePermission permission = permissionByResourceId.get(idResource);
-
-            if (permission == null) {
-                permission = new ProfilePermission();
-                permission.setProfile(profile);
-                permission.setResource(resourceRepository.getReferenceById(idResource));
-            }
-
-            permission.setNrPermissionLevel(item.nrPermissionLevel());
-            permissionsToSave.add(permission);
-        }
-
-        List<ProfilePermission> permissionToDelete = permissionByResourceId.values().stream()
-                .filter(permission -> !idsToDelete.contains(permission.getResource().getId()))
+        List<ProfilePermission> toInsert = requested.stream()
+                .map(ProfilePermissionRequest::idResource)
+                .filter(resourceId -> !existingByResourceId.containsKey(resourceId))
+                .map(resourceId -> {
+                    ProfilePermission permission = new ProfilePermission();
+                    permission.setProfile(profile);
+                    permission.setResource(resourceRepository.getReferenceById(resourceId));
+                    return permission;
+                })
                 .toList();
 
-        profilePermissionRepository.deleteAll(permissionToDelete);
-        profilePermissionRepository.saveAll(permissionsToSave);
+        List<ProfilePermission> toDelete = existingByResourceId.values().stream()
+                .filter(permission -> !requestedResourceIds.contains(permission.getResource().getId()))
+                .toList();
+
+        if (!toDelete.isEmpty()) {
+            profilePermissionRepository.deleteAll(toDelete);
+        }
+
+        if (!toInsert.isEmpty()) {
+            profilePermissionRepository.saveAll(toInsert);
+        }
     }
 
     private void validateDuplicateResources(ProfileRequest request) {

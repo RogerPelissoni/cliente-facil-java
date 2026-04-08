@@ -15,9 +15,6 @@ public class ProfilePermission extends AbstractAuditableTenantEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nr_permission_level", nullable = false)
-    private Short nrPermissionLevel;
-
     @ManyToOne
     @JoinColumn(name = "profile_id")
     private Profile profile;

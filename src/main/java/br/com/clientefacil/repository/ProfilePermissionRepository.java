@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ProfilePermissionRepository extends JpaRepository<ProfilePermission, Long> {
     List<ProfilePermission> findAllByProfileId(Long profileId);
+
+    void deleteByResourceId(Long resourceId);
 }

@@ -1,16 +1,15 @@
 CREATE TABLE profile_permission
 (
-    id                  BIGSERIAL PRIMARY KEY,
-    nr_permission_level SMALLINT,
+    id          BIGSERIAL PRIMARY KEY,
 
-    profile_id          BIGINT,
-    resource_id         BIGINT,
+    profile_id  BIGINT,
+    resource_id BIGINT,
 
-    company_id          BIGINT,
-    created_by          BIGINT,
-    updated_by          BIGINT,
-    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    company_id  BIGINT,
+    created_by  BIGINT,
+    updated_by  BIGINT,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT uq_profile_permission_profile_resource_company UNIQUE (profile_id, resource_id, company_id),
 

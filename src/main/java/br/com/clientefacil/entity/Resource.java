@@ -18,7 +18,7 @@ public class Resource extends AbstractAuditableTenantEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "signature", nullable = false)
+    @Column(name = "signature", nullable = false, length = 100)
     private String signature;
 
     @ManyToOne
