@@ -1,6 +1,6 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.entity.base.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,11 +15,11 @@ public class ProfilePermission extends AbstractAuditableTenantEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "profile_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "profile_id", nullable = false)
     private Profile profile;
 
-    @ManyToOne
-    @JoinColumn(name = "resource_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "resource_id", nullable = false)
     private Resource resource;
 }

@@ -1,6 +1,6 @@
 package br.com.clientefacil.mapper;
 
-import br.com.clientefacil.core.CoreMapper;
+import br.com.clientefacil.core.mapper.CoreMapper;
 import br.com.clientefacil.dto.PersonResponse;
 import br.com.clientefacil.entity.Person;
 import org.mapstruct.Mapper;

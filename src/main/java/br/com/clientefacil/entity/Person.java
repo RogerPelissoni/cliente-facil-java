@@ -1,6 +1,6 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.entity.base.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
 import br.com.clientefacil.entity.enums.PersonGenderEnum;
 import jakarta.persistence.*;
 import lombok.Getter;

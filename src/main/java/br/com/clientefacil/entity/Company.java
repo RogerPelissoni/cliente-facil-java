@@ -1,6 +1,6 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.entity.base.AbstractAuditableEntity;
+import br.com.clientefacil.core.entity.AbstractAuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

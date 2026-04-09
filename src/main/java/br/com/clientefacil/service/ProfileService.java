@@ -1,18 +1,21 @@
 package br.com.clientefacil.service;
 
-import br.com.clientefacil.core.CoreService;
 import br.com.clientefacil.dto.ProfilePermissionRequest;
 import br.com.clientefacil.dto.ProfileRequest;
 import br.com.clientefacil.dto.ProfileResponse;
 import br.com.clientefacil.entity.Profile;
 import br.com.clientefacil.entity.ProfilePermission;
+import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.mapper.ProfileMapper;
 import br.com.clientefacil.repository.ProfilePermissionRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.ResourceRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -21,26 +24,29 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ProfileService extends CoreService<Profile, ProfileResponse, ProfileMapper, Long> {
+public class ProfileService {
 
     private final ProfileRepository repository;
     private final ResourceRepository resourceRepository;
     private final ProfilePermissionRepository profilePermissionRepository;
     private final ProfileMapper mapper;
 
-    @Override
-    protected JpaRepository<Profile, Long> getRepository() {
-        return repository;
+    public List<ProfileResponse> findAll() {
+        return mapper.toResponseList(repository.findAll());
     }
 
-    @Override
-    protected ProfileMapper getMapper() {
-        return mapper;
+    public Page<ProfileResponse> findAllPaged(int page, int size, String sort, String direction) {
+        Sort.Direction dir = Sort.Direction.fromOptionalString(direction)
+                .orElse(Sort.Direction.ASC);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sort));
+
+        return repository.findAll(pageable)
+                .map(mapper::toResponse);
     }
 
-    @Override
-    protected String getEntityName() {
-        return "Perfil";
+    public ProfileResponse findById(Long id) {
+        return mapper.toResponse(findEntityById(id));
     }
 
     @Transactional
@@ -71,12 +77,23 @@ public class ProfileService extends CoreService<Profile, ProfileResponse, Profil
         return mapper.toResponse(savedProfile);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repository.delete(findEntityById(id));
+    }
+
+    private Profile findEntityById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Perfil não encontrado(a)"));
+    }
+
     private void fillEntityByRequest(Profile entity, ProfileRequest request) {
         entity.setName(request.name());
     }
 
     private void syncPermissions(Profile profile, ProfileRequest request) {
-        List<ProfilePermissionRequest> requested = Optional.ofNullable(request.profilePermissions()).orElse(Collections.emptyList());
+        List<ProfilePermissionRequest> requested = Optional.ofNullable(request.profilePermissions())
+                .orElse(Collections.emptyList());
 
         Map<Long, ProfilePermission> existingByResourceId = profilePermissionRepository.findAllByProfileId(profile.getId())
                 .stream()
@@ -114,7 +131,8 @@ public class ProfileService extends CoreService<Profile, ProfileResponse, Profil
     }
 
     private void validateDuplicateResources(ProfileRequest request) {
-        List<ProfilePermissionRequest> permissions = Optional.ofNullable(request.profilePermissions()).orElse(Collections.emptyList());
+        List<ProfilePermissionRequest> permissions = Optional.ofNullable(request.profilePermissions())
+                .orElse(Collections.emptyList());
 
         Set<Long> uniqueResourceIds = new HashSet<>();
 

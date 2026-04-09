@@ -1,6 +1,6 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.entity.base.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,7 +21,7 @@ public class Resource extends AbstractAuditableTenantEntity {
     @Column(name = "signature", nullable = false, length = 100)
     private String signature;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id")
     private Module module;
 }
