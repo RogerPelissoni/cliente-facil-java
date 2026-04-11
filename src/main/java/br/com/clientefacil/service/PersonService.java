@@ -1,9 +1,9 @@
 package br.com.clientefacil.service;
 
+import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.dto.PersonRequest;
 import br.com.clientefacil.dto.PersonResponse;
 import br.com.clientefacil.entity.Person;
-import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.mapper.PersonMapper;
 import br.com.clientefacil.repository.PersonRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +14,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +40,15 @@ public class PersonService {
 
     public PersonResponse findById(Long id) {
         return mapper.toResponse(findEntityById(id));
+    }
+
+    public Map<Long, String> keyValue() {
+        return repository.keyValue()
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
     }
 
     public PersonResponse create(PersonRequest request) {

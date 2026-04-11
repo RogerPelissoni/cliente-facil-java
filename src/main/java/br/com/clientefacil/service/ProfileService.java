@@ -1,11 +1,11 @@
 package br.com.clientefacil.service;
 
+import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.dto.ProfilePermissionRequest;
 import br.com.clientefacil.dto.ProfileRequest;
 import br.com.clientefacil.dto.ProfileResponse;
 import br.com.clientefacil.entity.Profile;
 import br.com.clientefacil.entity.ProfilePermission;
-import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.mapper.ProfileMapper;
 import br.com.clientefacil.repository.ProfilePermissionRepository;
 import br.com.clientefacil.repository.ProfileRepository;
@@ -47,6 +47,15 @@ public class ProfileService {
 
     public ProfileResponse findById(Long id) {
         return mapper.toResponse(findEntityById(id));
+    }
+
+    public Map<Long, String> keyValue() {
+        return repository.keyValue()
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
     }
 
     @Transactional

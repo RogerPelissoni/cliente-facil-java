@@ -2,6 +2,10 @@ package br.com.clientefacil.controller;
 
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
+import br.com.clientefacil.dto.UserScreenResponse;
+import br.com.clientefacil.service.CompanyService;
+import br.com.clientefacil.service.PersonService;
+import br.com.clientefacil.service.ProfileService;
 import br.com.clientefacil.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -18,14 +22,31 @@ import java.util.List;
 public class UserController {
 
     private final UserService service;
+    private final PersonService personService;
+    private final ProfileService profileService;
+    private final CompanyService companyService;
 
-    @GetMapping
+    @GetMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public List<UserResponse> findAll() {
-        return service.findAll();
+    public UserScreenResponse screen() {
+        Page<UserResponse> obUser = service.findAllPaged(
+                0, 10, "id", "asc"
+        );
+        Map<Long, String> kvPerson = personService.keyValue();
+        Map<Long, String> kvProfile = profileService.keyValue();
+        Map<Long, String> kvCompany = companyService.keyValue();
+
+        return new UserScreenResponse(obUser, kvPerson, kvProfile, kvCompany);
     }
 
-    @GetMapping("/paged")
+//    @GetMapping
+//    @PreAuthorize("hasAuthority('USER_VIEW')")
+//    public List<UserResponse> findAll() {
+//        return service.findAll();
+//    }
+
+    // TODO: Ajustar para findAll para utilizar paginação caso houver parâmetros
+    @GetMapping
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public Page<UserResponse> findAllPaged(
             @RequestParam(defaultValue = "0") int page,
