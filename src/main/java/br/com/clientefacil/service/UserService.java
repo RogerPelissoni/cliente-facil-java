@@ -1,9 +1,9 @@
 package br.com.clientefacil.service;
 
+import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.entity.User;
-import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.mapper.UserMapper;
 import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.repository.ProfileRepository;
@@ -16,8 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -28,17 +26,18 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
 
-    public List<UserResponse> findAll() {
-        return mapper.toResponseList(repository.findAll());
-    }
-
-    public Page<UserResponse> findAllPaged(int page, int size, String sort, String direction) {
+    public Page<UserResponse> findAll(
+            int page,
+            int size,
+            String sort,
+            String direction
+    ) {
         Sort.Direction dir = Sort.Direction.fromOptionalString(direction)
                 .orElse(Sort.Direction.ASC);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sort));
 
-        return repository.findAll(pageable)
+        return repository.findAllWithRelations(pageable)
                 .map(mapper::toResponse);
     }
 

@@ -29,7 +29,7 @@ public class UserController {
     @GetMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public UserScreenResponse screen() {
-        Page<UserResponse> obUser = service.findAllPaged(
+        Page<UserResponse> obUser = service.findAll(
                 0, 10, "id", "asc"
         );
         Map<Long, String> kvPerson = personService.keyValue();
@@ -38,23 +38,16 @@ public class UserController {
 
         return new UserScreenResponse(obUser, kvPerson, kvProfile, kvCompany);
     }
-
-//    @GetMapping
-//    @PreAuthorize("hasAuthority('USER_VIEW')")
-//    public List<UserResponse> findAll() {
-//        return service.findAll();
-//    }
-
-    // TODO: Ajustar para findAll para utilizar paginação caso houver parâmetros
+    
     @GetMapping
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public Page<UserResponse> findAllPaged(
+    public Page<UserResponse> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sort,
             @RequestParam(defaultValue = "asc") String direction
     ) {
-        return service.findAllPaged(page, size, sort, direction);
+        return service.findAll(page, size, sort, direction);
     }
 
     @GetMapping("/{id}")

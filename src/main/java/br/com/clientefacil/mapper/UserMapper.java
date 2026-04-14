@@ -12,8 +12,12 @@ import java.util.List;
 public interface UserMapper extends CoreMapper<User, UserResponse> {
 
     @Override
+    @Mapping(source = "person.id", target = "personId")
+    @Mapping(source = "profile.id", target = "profileId")
+    @Mapping(source = "company.id", target = "companyId")
     @Mapping(source = "person.name", target = "personName")
     @Mapping(source = "profile.name", target = "profileName")
+    @Mapping(source = "company.name", target = "companyName")
     UserResponse toResponse(User user);
 
     @Override
