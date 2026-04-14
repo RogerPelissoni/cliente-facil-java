@@ -3,6 +3,7 @@ package br.com.clientefacil.controller;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.dto.UserScreenResponse;
+import br.com.clientefacil.dto.UserSearchRequest;
 import br.com.clientefacil.service.CompanyService;
 import br.com.clientefacil.service.PersonService;
 import br.com.clientefacil.service.ProfileService;
@@ -29,16 +30,20 @@ public class UserController {
     @GetMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public UserScreenResponse screen() {
-        Page<UserResponse> obUser = service.findAll(
-                0, 10, "id", "asc"
-        );
+        Page<UserResponse> users = service.search(UserSearchRequest.defaultRequest());
         Map<Long, String> kvPerson = personService.keyValue();
         Map<Long, String> kvProfile = profileService.keyValue();
         Map<Long, String> kvCompany = companyService.keyValue();
 
-        return new UserScreenResponse(obUser, kvPerson, kvProfile, kvCompany);
+        return new UserScreenResponse(users, kvPerson, kvProfile, kvCompany);
     }
-    
+
+    @PostMapping("/search")
+    @PreAuthorize("hasAuthority('USER_VIEW')")
+    public Page<UserResponse> search(@RequestBody UserSearchRequest request) {
+        return service.search(request);
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public Page<UserResponse> findAll(

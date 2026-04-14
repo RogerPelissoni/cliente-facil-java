@@ -1,18 +1,22 @@
 package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
+import br.com.clientefacil.core.support.SortBuilder;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
+import br.com.clientefacil.dto.UserSearchRequest;
 import br.com.clientefacil.entity.User;
 import br.com.clientefacil.mapper.UserMapper;
 import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.UserRepository;
+import br.com.clientefacil.search.UserSearchConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +29,19 @@ public class UserService {
     private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
+
+    public Page<UserResponse> search(UserSearchRequest request) {
+        Pageable pageable = PageRequest.of(
+                request.pageOrDefault(),
+                request.sizeOrDefault(),
+                SortBuilder.fromRequest(request, UserSearchConfig.SORT_FIELDS)
+        );
+
+        Specification<User> specification = UserSearchConfig.byFilters(request.filters());
+
+        return repository.findAll(specification, pageable)
+                .map(mapper::toResponse);
+    }
 
     public Page<UserResponse> findAll(
             int page,
