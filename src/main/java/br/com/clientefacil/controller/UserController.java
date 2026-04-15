@@ -27,10 +27,10 @@ public class UserController {
     private final ProfileService profileService;
     private final CompanyService companyService;
 
-    @GetMapping("/screen")
+    @PostMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public UserScreenResponse screen() {
-        Page<UserResponse> users = service.search(UserSearchRequest.defaultRequest());
+    public UserScreenResponse screen(@RequestBody UserSearchRequest request) {
+        Page<UserResponse> users = service.search(request);
         Map<Long, String> kvPerson = personService.keyValue();
         Map<Long, String> kvProfile = profileService.keyValue();
         Map<Long, String> kvCompany = companyService.keyValue();
