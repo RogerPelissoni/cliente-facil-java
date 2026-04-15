@@ -18,6 +18,8 @@ public record UserRequest(
 
         @NotNull Long personId,
 
-        @NotNull Long profileId
+        @NotNull Long profileId,
+
+        @NotNull Long companyId
 ) {
 }

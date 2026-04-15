@@ -95,6 +95,7 @@ public class UserService {
         user.setEmail(request.email());
         user.setPerson(person);
         user.setProfile(profile);
+        user.setCompanyId(request.companyId());
 
         if (isCreate) {
             user.setPassword(passwordEncoder.encode(request.password()));
