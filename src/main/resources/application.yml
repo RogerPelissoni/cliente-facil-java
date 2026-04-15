@@ -11,6 +11,9 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
   flyway:
     enabled: true
@@ -25,3 +28,11 @@ jwt:
 
 server:
   port: ${SERVER_PORT:8080}
+
+logging:
+  file:
+    name: logs/application.log
+  level:
+    root: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
