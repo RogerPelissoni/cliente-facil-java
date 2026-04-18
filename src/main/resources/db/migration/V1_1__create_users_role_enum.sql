@@ -1,0 +1,1 @@
+CREATE TYPE users_role_enum AS ENUM ('admin', 'company', 'professional', 'client');

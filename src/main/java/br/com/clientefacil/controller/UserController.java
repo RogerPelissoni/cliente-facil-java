@@ -8,6 +8,7 @@ import br.com.clientefacil.service.CompanyService;
 import br.com.clientefacil.service.PersonService;
 import br.com.clientefacil.service.ProfileService;
 import br.com.clientefacil.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ public class UserController {
     private final ProfileService profileService;
     private final CompanyService companyService;
 
+    @Operation(summary = "SCREEN")
     @PostMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public UserScreenResponse screen(@RequestBody UserSearchRequest request) {
@@ -38,12 +40,14 @@ public class UserController {
         return new UserScreenResponse(users, kvPerson, kvProfile, kvCompany);
     }
 
+    @Operation(summary = "SEARCH")
     @PostMapping("/search")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public Page<UserResponse> search(@RequestBody UserSearchRequest request) {
         return service.search(request);
     }
 
+    @Operation(summary = "FIND_ALL")
     @GetMapping
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public Page<UserResponse> findAll(
@@ -55,18 +59,21 @@ public class UserController {
         return service.findAll(page, size, sort, direction);
     }
 
+    @Operation(summary = "FIND_BY_ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public UserResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
+    @Operation(summary = "CREATE")
     @PostMapping
     @PreAuthorize("hasAuthority('USER_CREATE')")
     public UserResponse create(@RequestBody @Valid UserRequest request) {
         return service.create(request);
     }
 
+    @Operation(summary = "UPDATE")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_UPDATE')")
     public UserResponse update(
@@ -76,6 +83,7 @@ public class UserController {
         return service.update(id, request);
     }
 
+    @Operation(summary = "DELETE")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('USER_DELETE')")

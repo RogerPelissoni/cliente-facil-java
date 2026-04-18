@@ -1,5 +1,6 @@
 package br.com.clientefacil.seeder;
 
+import br.com.clientefacil.core.dto.UserRoleEnum;
 import br.com.clientefacil.entity.Company;
 import br.com.clientefacil.entity.Person;
 import br.com.clientefacil.entity.Profile;
@@ -58,6 +59,7 @@ public class MainSeeder {
                 adminUser.setName("Administrador");
                 adminUser.setEmail("admin@admin.com");
                 adminUser.setPassword(passwordEncoder.encode("123456"));
+                adminUser.setRole(UserRoleEnum.admin);
                 adminUser.setPerson(person);
                 adminUser.setProfile(profile);
                 adminUser.setCompanyId(company.getId());
