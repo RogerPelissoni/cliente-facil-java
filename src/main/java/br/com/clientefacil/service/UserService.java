@@ -1,5 +1,6 @@
 package br.com.clientefacil.service;
 
+import br.com.clientefacil.core.dto.UserRoleEnum;
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.core.support.SortBuilder;
 import br.com.clientefacil.dto.UserRequest;
@@ -93,6 +94,7 @@ public class UserService {
 
         user.setName(request.name());
         user.setEmail(request.email());
+        user.setRole(UserRoleEnum.valueOf(request.role()));
         user.setPerson(person);
         user.setProfile(profile);
         user.setCompanyId(request.companyId());

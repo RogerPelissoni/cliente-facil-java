@@ -16,6 +16,9 @@ public record UserRequest(
         @Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
         String password,
 
+        @NotBlank
+        String role,
+
         @NotNull Long personId,
 
         @NotNull Long profileId,

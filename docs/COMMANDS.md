@@ -20,6 +20,27 @@ mvn clean package
 mvn clean
 ```
 
+### 🧹 Remoção forçada do build (⚠️ importante para Flyway)
+
+```bash
+rm -rf target
+```
+
+> ⚠️ Essencial quando migrations “fantasma” aparecem  
+> O Flyway lê os arquivos de:
+>
+> target/classes/db/migration
+>
+> Mesmo que você tenha removido/renomeado arquivos em:
+>
+> src/main/resources/db/migration
+>
+> Eles podem continuar existindo no target, causando erros como:
+>
+> Found more than one migration with version X
+
+---
+
 ### 📥 Baixar dependências
 
 ```bash
@@ -174,19 +195,24 @@ mvn test -X
 
 ## 📌 Dicas úteis
 
-- Quando algo quebrar:
+### Quando algo estranho acontecer com migrations:
 
 ```bash
+rm -rf target
 mvn clean install
 ```
 
-- Para desenvolvimento:
+---
+
+### Para desenvolvimento:
 
 ```bash
 mvn spring-boot:run
 ```
 
-- Reset completo do banco:
+---
+
+### Reset completo do banco:
 
 ```bash
 docker-compose down -v && docker-compose up -d && mvn flyway:migrate
@@ -218,6 +244,7 @@ em ambiente com dados importantes.
 
 ```bash
 docker-compose up -d
+rm -rf target
 mvn flyway:migrate
 mvn spring-boot:run
 ```
@@ -227,5 +254,5 @@ mvn spring-boot:run
 ## ⚡ Reset rápido (mais usado no dia a dia)
 
 ```bash
-rm -rf ../cliente-facil-database && docker-compose up -d && mvn flyway:migrate
+rm -rf ../cliente-facil-database && rm -rf target && docker-compose up -d && mvn flyway:migrate
 ```

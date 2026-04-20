@@ -1,22 +1,27 @@
 package br.com.clientefacil.seeder;
 
 import br.com.clientefacil.core.dto.UserRoleEnum;
-import br.com.clientefacil.entity.Company;
-import br.com.clientefacil.entity.Person;
-import br.com.clientefacil.entity.Profile;
-import br.com.clientefacil.entity.User;
+import br.com.clientefacil.entity.*;
 import br.com.clientefacil.entity.enums.PersonGenderEnum;
-import br.com.clientefacil.repository.CompanyRepository;
-import br.com.clientefacil.repository.PersonRepository;
-import br.com.clientefacil.repository.ProfileRepository;
-import br.com.clientefacil.repository.UserRepository;
+import br.com.clientefacil.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Configuration
 public class MainSeeder {
+
+    private final ResourceRepository resourceRepository;
+    private final ProfilePermissionRepository profilePermissionRepository;
+
+    public MainSeeder(ResourceRepository resourceRepository, ProfilePermissionRepository profilePermissionRepository) {
+        this.resourceRepository = resourceRepository;
+        this.profilePermissionRepository = profilePermissionRepository;
+    }
 
     @Bean
     public CommandLineRunner seedData(
@@ -65,6 +70,29 @@ public class MainSeeder {
                 adminUser.setCompanyId(company.getId());
                 userRepository.save(adminUser);
             }
+
+            createUserPermissions(profile, company);
         };
+    }
+
+    private void createUserPermissions(Profile profile, Company company) {
+        List<Resource> resources = resourceRepository.findAll();
+        List<ProfilePermission> permissionsToSave = new ArrayList<>();
+
+        for (Resource resource : resources) {
+            boolean existsProfilePermission = profilePermissionRepository.existsByProfileIdAndResourceId(profile.getId(), resource.getId());
+
+            if (!existsProfilePermission) {
+                ProfilePermission profilePermission = new ProfilePermission();
+                profilePermission.setProfile(profile);
+                profilePermission.setResource(resource);
+                profilePermission.setCompanyId(company.getId());
+                permissionsToSave.add(profilePermission);
+            }
+        }
+
+        if (!permissionsToSave.isEmpty()) {
+            profilePermissionRepository.saveAll(permissionsToSave);
+        }
     }
 }
