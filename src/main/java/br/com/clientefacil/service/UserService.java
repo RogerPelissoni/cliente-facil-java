@@ -3,9 +3,9 @@ package br.com.clientefacil.service;
 import br.com.clientefacil.core.dto.UserRoleEnum;
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.core.support.SortBuilder;
+import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
-import br.com.clientefacil.dto.UserSearchRequest;
 import br.com.clientefacil.entity.User;
 import br.com.clientefacil.mapper.UserMapper;
 import br.com.clientefacil.repository.PersonRepository;
@@ -31,7 +31,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
 
-    public Page<UserResponse> search(UserSearchRequest request) {
+    public Page<UserResponse> search(DefaultSearchRequest request) {
         Pageable pageable = PageRequest.of(
                 request.pageOrDefault(),
                 request.sizeOrDefault(),

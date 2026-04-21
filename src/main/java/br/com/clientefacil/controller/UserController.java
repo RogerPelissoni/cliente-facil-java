@@ -1,9 +1,9 @@
 package br.com.clientefacil.controller;
 
+import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.dto.UserScreenResponse;
-import br.com.clientefacil.dto.UserSearchRequest;
 import br.com.clientefacil.service.CompanyService;
 import br.com.clientefacil.service.PersonService;
 import br.com.clientefacil.service.ProfileService;
@@ -31,7 +31,7 @@ public class UserController {
     @Operation(summary = "SCREEN")
     @PostMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public UserScreenResponse screen(@RequestBody UserSearchRequest request) {
+    public UserScreenResponse screen(@RequestBody DefaultSearchRequest request) {
         Page<UserResponse> users = service.search(request);
         Map<Long, String> kvPerson = personService.keyValue();
         Map<Long, String> kvProfile = profileService.keyValue();
@@ -43,7 +43,7 @@ public class UserController {
     @Operation(summary = "SEARCH")
     @PostMapping("/search")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public Page<UserResponse> search(@RequestBody UserSearchRequest request) {
+    public Page<UserResponse> search(@RequestBody DefaultSearchRequest request) {
         return service.search(request);
     }
 

@@ -6,15 +6,15 @@ import br.com.clientefacil.core.dto.search.SortRequest;
 
 import java.util.List;
 
-public record UserSearchRequest(
+public record DefaultSearchRequest(
         Integer page,
         Integer size,
         List<SortRequest> sorts,
         List<FilterRequest> filters
 ) implements SearchRequest {
 
-    public static UserSearchRequest defaultRequest() {
-        return new UserSearchRequest(
+    public static DefaultSearchRequest defaultRequest() {
+        return new DefaultSearchRequest(
                 0,
                 10,
                 List.of(),

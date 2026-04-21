@@ -1,20 +1,23 @@
 package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
+import br.com.clientefacil.core.support.SortBuilder;
 import br.com.clientefacil.dto.CompanyRequest;
 import br.com.clientefacil.dto.CompanyResponse;
+import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.entity.Company;
 import br.com.clientefacil.mapper.CompanyMapper;
 import br.com.clientefacil.repository.CompanyRepository;
 import br.com.clientefacil.repository.PersonRepository;
+import br.com.clientefacil.search.CompanySearchConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -26,17 +29,31 @@ public class CompanyService {
     private final PersonRepository personRepository;
     private final CompanyMapper mapper;
 
-    public List<CompanyResponse> findAll() {
-        return mapper.toResponseList(repository.findAll());
+    public Page<CompanyResponse> search(DefaultSearchRequest request) {
+        Pageable pageable = PageRequest.of(
+                request.pageOrDefault(),
+                request.sizeOrDefault(),
+                SortBuilder.fromRequest(request, CompanySearchConfig.SORT_FIELDS)
+        );
+
+        Specification<Company> specification = CompanySearchConfig.byFilters(request.filters());
+
+        return repository.findAll(specification, pageable)
+                .map(mapper::toResponse);
     }
 
-    public Page<CompanyResponse> findAllPaged(int page, int size, String sort, String direction) {
+    public Page<CompanyResponse> findAll(
+            int page,
+            int size,
+            String sort,
+            String direction
+    ) {
         Sort.Direction dir = Sort.Direction.fromOptionalString(direction)
                 .orElse(Sort.Direction.ASC);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sort));
 
-        return repository.findAll(pageable)
+        return repository.findAllWithRelations(pageable)
                 .map(mapper::toResponse);
     }
 

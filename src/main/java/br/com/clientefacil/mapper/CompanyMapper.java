@@ -11,6 +11,8 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface CompanyMapper extends CoreMapper<Company, CompanyResponse> {
 
+    @Override
+    @Mapping(source = "person.id", target = "personId")
     @Mapping(source = "person.name", target = "personName")
     CompanyResponse toResponse(Company company);
 
