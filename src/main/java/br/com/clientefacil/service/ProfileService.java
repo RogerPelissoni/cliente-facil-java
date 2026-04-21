@@ -1,6 +1,8 @@
 package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
+import br.com.clientefacil.core.support.SortBuilder;
+import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.ProfilePermissionRequest;
 import br.com.clientefacil.dto.ProfileRequest;
 import br.com.clientefacil.dto.ProfileResponse;
@@ -10,12 +12,14 @@ import br.com.clientefacil.mapper.ProfileMapper;
 import br.com.clientefacil.repository.ProfilePermissionRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.ResourceRepository;
+import br.com.clientefacil.search.ProfileSearchConfig;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -31,11 +35,25 @@ public class ProfileService {
     private final ProfilePermissionRepository profilePermissionRepository;
     private final ProfileMapper mapper;
 
-    public List<ProfileResponse> findAll() {
-        return mapper.toResponseList(repository.findAll());
+    public Page<ProfileResponse> search(DefaultSearchRequest request) {
+        Pageable pageable = PageRequest.of(
+                request.pageOrDefault(),
+                request.sizeOrDefault(),
+                SortBuilder.fromRequest(request, ProfileSearchConfig.SORT_FIELDS)
+        );
+
+        Specification<Profile> specification = ProfileSearchConfig.byFilters(request.filters());
+
+        return repository.findAll(specification, pageable)
+                .map(mapper::toResponse);
     }
 
-    public Page<ProfileResponse> findAllPaged(int page, int size, String sort, String direction) {
+    public Page<ProfileResponse> findAll(
+            int page,
+            int size,
+            String sort,
+            String direction
+    ) {
         Sort.Direction dir = Sort.Direction.fromOptionalString(direction)
                 .orElse(Sort.Direction.ASC);
 
