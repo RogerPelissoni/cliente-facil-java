@@ -1,6 +1,7 @@
 package br.com.clientefacil.controller;
 
 import br.com.clientefacil.dto.DefaultSearchRequest;
+import br.com.clientefacil.dto.ProfilePermissionResponse;
 import br.com.clientefacil.dto.ProfileRequest;
 import br.com.clientefacil.dto.ProfileResponse;
 import br.com.clientefacil.service.ProfileService;
@@ -11,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/profile")
@@ -65,5 +68,11 @@ public class ProfileController {
     @PreAuthorize("hasAuthority('PROFILE_DELETE')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+
+    @GetMapping("/permissionsByProfile/{idProfile}")
+    @PreAuthorize("hasAuthority('PROFILE_VIEW')")
+    public List<ProfilePermissionResponse> permissionsByProfile(@PathVariable Long idProfile) {
+        return service.findPermissionsByProfile(idProfile);
     }
 }

@@ -3,6 +3,10 @@ package br.com.clientefacil.dto;
 import jakarta.validation.constraints.NotNull;
 
 public record ProfilePermissionRequest(
-        @NotNull Long idResource
+        Long id,
+        @NotNull Long moduleId,
+        @NotNull Long resourceId,
+        @NotNull String resourceSignature,
+        @NotNull Boolean hasPermission
 ) {
 }

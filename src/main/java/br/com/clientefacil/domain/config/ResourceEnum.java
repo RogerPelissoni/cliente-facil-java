@@ -3,7 +3,7 @@ package br.com.clientefacil.domain.config;
 import lombok.Getter;
 
 @Getter
-public enum ResourceCode {
+public enum ResourceEnum {
 
     USER_VIEW("Usuários - visualizar", ModuleCode.CORE),
     USER_CREATE("Usuários - criar", ModuleCode.CORE),
@@ -28,12 +28,12 @@ public enum ResourceCode {
     private final String description;
     private final ModuleCode module;
 
-    ResourceCode(String description, ModuleCode module) {
+    ResourceEnum(String description, ModuleCode module) {
         this.description = description;
         this.module = module;
     }
 
-    public String getCode() {
+    public String getSignature() {
         return name();
     }
 }

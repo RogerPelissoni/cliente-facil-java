@@ -2,12 +2,12 @@ package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.core.support.SortBuilder;
-import br.com.clientefacil.dto.DefaultSearchRequest;
-import br.com.clientefacil.dto.ProfilePermissionRequest;
-import br.com.clientefacil.dto.ProfileRequest;
-import br.com.clientefacil.dto.ProfileResponse;
+import br.com.clientefacil.domain.config.ResourceEnum;
+import br.com.clientefacil.dto.*;
+import br.com.clientefacil.entity.Module;
 import br.com.clientefacil.entity.Profile;
 import br.com.clientefacil.entity.ProfilePermission;
+import br.com.clientefacil.entity.Resource;
 import br.com.clientefacil.mapper.ProfileMapper;
 import br.com.clientefacil.repository.ProfilePermissionRepository;
 import br.com.clientefacil.repository.ProfileRepository;
@@ -120,7 +120,10 @@ public class ProfileService {
 
     private void syncPermissions(Profile profile, ProfileRequest request) {
         List<ProfilePermissionRequest> requested = Optional.ofNullable(request.profilePermissions())
-                .orElse(Collections.emptyList());
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(ProfilePermissionRequest::hasPermission)
+                .toList();
 
         Map<Long, ProfilePermission> existingByResourceId = profilePermissionRepository.findAllByProfileId(profile.getId())
                 .stream()
@@ -130,11 +133,11 @@ public class ProfileService {
                 ));
 
         Set<Long> requestedResourceIds = requested.stream()
-                .map(ProfilePermissionRequest::idResource)
+                .map(ProfilePermissionRequest::resourceId)
                 .collect(Collectors.toSet());
 
         List<ProfilePermission> toInsert = requested.stream()
-                .map(ProfilePermissionRequest::idResource)
+                .map(ProfilePermissionRequest::resourceId)
                 .filter(resourceId -> !existingByResourceId.containsKey(resourceId))
                 .map(resourceId -> {
                     ProfilePermission permission = new ProfilePermission();
@@ -164,11 +167,49 @@ public class ProfileService {
         Set<Long> uniqueResourceIds = new HashSet<>();
 
         boolean hasDuplicate = permissions.stream()
-                .map(ProfilePermissionRequest::idResource)
+                .map(ProfilePermissionRequest::resourceId)
                 .anyMatch(resourceId -> !uniqueResourceIds.add(resourceId));
 
         if (hasDuplicate) {
             throw new IllegalArgumentException("Não é permitido repetir recurso nas permissões do perfil.");
         }
+    }
+
+    public List<ProfilePermissionResponse> findPermissionsByProfile(Long profileId) {
+
+        List<ProfilePermission> profilePermissions = profilePermissionRepository.findAllByProfileId(profileId);
+        List<Resource> resources = resourceRepository.findAllWithRelations();
+
+        Map<Long, ProfilePermission> profilePermissionByResourceId = profilePermissions.stream()
+                .collect(Collectors.toMap(
+                        permission -> permission.getResource().getId(),
+                        Function.identity()
+                ));
+
+        Map<String, Resource> resourceBySignature = resources.stream()
+                .collect(Collectors.toMap(
+                        Resource::getSignature,
+                        Function.identity()
+                ));
+
+        return Arrays.stream(ResourceEnum.values())
+                .map(resourceEnum -> {
+                    Resource resource = resourceBySignature.get(resourceEnum.getSignature());
+                    Module module = resource.getModule();
+                    ProfilePermission profilePermission = profilePermissionByResourceId.get(resource.getId());
+
+                    boolean hasPermission = profilePermission != null;
+
+                    return new ProfilePermissionResponse(
+                            hasPermission ? profilePermission.getId() : null,
+                            resource.getId(),
+                            resource.getName(),
+                            resource.getSignature(),
+                            module.getId(),
+                            module.getName(),
+                            hasPermission
+                    );
+                })
+                .toList();
     }
 }

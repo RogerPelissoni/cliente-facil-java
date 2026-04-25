@@ -1,7 +1,7 @@
 package br.com.clientefacil.core.seeder;
 
 import br.com.clientefacil.domain.config.ModuleCode;
-import br.com.clientefacil.domain.config.ResourceCode;
+import br.com.clientefacil.domain.config.ResourceEnum;
 import br.com.clientefacil.entity.Module;
 import br.com.clientefacil.entity.Resource;
 import br.com.clientefacil.repository.ModuleRepository;
@@ -68,19 +68,19 @@ public class AuthorizationSeeder implements ApplicationRunner {
     }
 
     private void syncResources(Map<String, Module> modulesByName) {
-        Map<String, ResourceCode> enumResources = Arrays.stream(ResourceCode.values())
-                .collect(Collectors.toMap(ResourceCode::getCode, Function.identity()));
+        Map<String, ResourceEnum> resourceBySignature = Arrays.stream(ResourceEnum.values())
+                .collect(Collectors.toMap(ResourceEnum::getSignature, Function.identity()));
 
         Map<String, Resource> dbResources = resourceRepository.findAll().stream()
                 .collect(Collectors.toMap(Resource::getSignature, Function.identity()));
 
-        for (ResourceCode code : enumResources.values()) {
-            Resource existing = dbResources.get(code.getCode());
+        for (ResourceEnum code : resourceBySignature.values()) {
+            Resource existing = dbResources.get(code.getSignature());
             Module module = modulesByName.get(code.getModule().getCode());
 
             if (existing == null) {
                 Resource resource = new Resource();
-                resource.setSignature(code.getCode());
+                resource.setSignature(code.getSignature());
                 resource.setName(code.getDescription());
                 resource.setModule(module);
                 resourceRepository.save(resource);
@@ -109,7 +109,7 @@ public class AuthorizationSeeder implements ApplicationRunner {
         }
 
         for (Resource resource : dbResources.values()) {
-            if (!enumResources.containsKey(resource.getSignature())) {
+            if (!resourceBySignature.containsKey(resource.getSignature())) {
                 profilePermissionRepository.deleteByResourceId(resource.getId());
                 resourceRepository.delete(resource);
             }
