@@ -48,12 +48,14 @@ public class ProfileController {
         return service.findById(id);
     }
 
+    @Operation(summary = "CREATE")
     @PostMapping
     @PreAuthorize("hasAuthority('PROFILE_CREATE')")
     public ProfileResponse create(@RequestBody @Valid ProfileRequest request) {
         return service.create(request);
     }
 
+    @Operation(summary = "UPDATE")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('PROFILE_UPDATE')")
     public ProfileResponse update(
@@ -63,6 +65,7 @@ public class ProfileController {
         return service.update(id, request);
     }
 
+    @Operation(summary = "DELETE")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('PROFILE_DELETE')")
@@ -70,6 +73,7 @@ public class ProfileController {
         service.delete(id);
     }
 
+    @Operation(summary = "PERMISSIONS_BY_PROFILE")
     @GetMapping("/permissionsByProfile/{idProfile}")
     @PreAuthorize("hasAuthority('PROFILE_VIEW')")
     public List<ProfilePermissionResponse> permissionsByProfile(@PathVariable Long idProfile) {
