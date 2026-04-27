@@ -2,11 +2,18 @@ package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.core.support.SortBuilder;
-import br.com.clientefacil.dto.DefaultSearchRequest;
-import br.com.clientefacil.dto.PersonRequest;
-import br.com.clientefacil.dto.PersonResponse;
+import br.com.clientefacil.dto.*;
 import br.com.clientefacil.entity.Person;
+import br.com.clientefacil.entity.PersonAddress;
+import br.com.clientefacil.entity.PersonMail;
+import br.com.clientefacil.entity.PersonPhone;
+import br.com.clientefacil.mapper.PersonAddressMapper;
+import br.com.clientefacil.mapper.PersonMailMapper;
 import br.com.clientefacil.mapper.PersonMapper;
+import br.com.clientefacil.mapper.PersonPhoneMapper;
+import br.com.clientefacil.repository.PersonAddressRepository;
+import br.com.clientefacil.repository.PersonMailRepository;
+import br.com.clientefacil.repository.PersonPhoneRepository;
 import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.search.PersonSearchConfig;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +32,15 @@ import java.util.stream.Collectors;
 public class PersonService {
 
     private final PersonRepository repository;
+    private final PersonPhoneRepository personPhoneRepository;
+    private final PersonAddressRepository personAddressRepository;
+    private final PersonMailRepository personMailRepository;
+
     private final PersonMapper mapper;
+    private final PersonPhoneMapper personPhoneMapper;
+    private final PersonAddressMapper personAddressMapper;
+    private final PersonMailMapper personMailMapper;
+    private final PersonMapper personMapper;
 
     public Page<PersonResponse> search(DefaultSearchRequest request) {
         Pageable pageable = PageRequest.of(
@@ -55,8 +70,11 @@ public class PersonService {
                 .map(mapper::toResponse);
     }
 
-    public PersonResponse findById(Long id) {
-        return mapper.toResponse(findEntityById(id));
+    public PersonWithRelationsResponse findByIdWithRelations(Long id) {
+        return mapper.toResponseWithRelations(
+                repository.findByIdWithRelations(id)
+                        .orElseThrow(() -> new RuntimeException("Pessoa não encontrada"))
+        );
     }
 
     public Map<Long, String> keyValue() {
@@ -69,15 +87,22 @@ public class PersonService {
     }
 
     public PersonResponse create(PersonRequest request) {
-        Person entity = new Person();
-        fillEntityByRequest(entity, request);
-        return mapper.toResponse(repository.save(entity));
+        Person entity = personMapper.toEntity(request);
+        entity = repository.save(entity);
+
+        syncRelations(request, entity);
+
+        return mapper.toResponse(entity);
     }
 
     public PersonResponse update(Long id, PersonRequest request) {
         Person entity = findEntityById(id);
-        fillEntityByRequest(entity, request);
-        return mapper.toResponse(repository.save(entity));
+        personMapper.updateEntityFromRequest(request, entity);
+        repository.save(entity);
+
+        syncRelations(request, entity);
+
+        return mapper.toResponse(entity);
     }
 
     public void delete(Long id) {
@@ -89,10 +114,24 @@ public class PersonService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pessoa não encontrada"));
     }
 
-    private void fillEntityByRequest(Person entity, PersonRequest request) {
-        entity.setName(request.name());
-        entity.setDsDocument(request.dsDocument());
-        entity.setTpGender(request.tpGender());
-        entity.setFlActive(request.flActive());
+    private void syncRelations(PersonRequest request, Person person) {
+
+        for (PersonAddressRequest personAddressRequest : request.personAddresses()) {
+            PersonAddress personAddress = personAddressMapper.toEntity(personAddressRequest);
+            personAddress.setPerson(person);
+            personAddressRepository.save(personAddress);
+        }
+
+        for (PersonPhoneRequest personPhoneRequest : request.personPhones()) {
+            PersonPhone personPhone = personPhoneMapper.toEntity(personPhoneRequest);
+            personPhone.setPerson(person);
+            personPhoneRepository.save(personPhone);
+        }
+
+        for (PersonMailRequest personMailRequest : request.personMails()) {
+            PersonMail personMail = personMailMapper.toEntity(personMailRequest);
+            personMail.setPerson(person);
+            personMailRepository.save(personMail);
+        }
     }
 }

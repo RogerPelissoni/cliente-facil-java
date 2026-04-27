@@ -8,6 +8,9 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "person")
 @Getter
@@ -31,4 +34,13 @@ public class Person extends AbstractAuditableTenantEntity {
 
     @Column(name = "fl_active", nullable = false)
     private Boolean flActive = true;
+
+    @OneToMany(mappedBy = "person")
+    private Set<PersonAddress> personAddresses = new HashSet<>();
+
+    @OneToMany(mappedBy = "person")
+    private Set<PersonPhone> personPhones = new HashSet<>();
+
+    @OneToMany(mappedBy = "person")
+    private Set<PersonMail> personMails = new HashSet<>();
 }

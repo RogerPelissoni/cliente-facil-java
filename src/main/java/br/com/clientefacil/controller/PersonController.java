@@ -3,6 +3,7 @@ package br.com.clientefacil.controller;
 import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.PersonRequest;
 import br.com.clientefacil.dto.PersonResponse;
+import br.com.clientefacil.dto.PersonWithRelationsResponse;
 import br.com.clientefacil.service.PersonService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -41,8 +42,8 @@ public class PersonController {
     @Operation(summary = "FIND_BY_ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('PERSON_VIEW')")
-    public PersonResponse findById(@PathVariable Long id) {
-        return service.findById(id);
+    public PersonWithRelationsResponse findById(@PathVariable Long id) {
+        return service.findByIdWithRelations(id);
     }
 
     @Operation(summary = "CREATE")

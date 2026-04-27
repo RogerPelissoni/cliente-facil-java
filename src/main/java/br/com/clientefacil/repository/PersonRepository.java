@@ -1,6 +1,7 @@
 package br.com.clientefacil.repository;
 
 import br.com.clientefacil.entity.Person;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +18,17 @@ public interface PersonRepository extends JpaRepository<Person, Long>, JpaSpecif
     List<Object[]> keyValue();
 
     Optional<Person> findByDsDocument(String document);
+
+    @EntityGraph(attributePaths = {
+            "personAddresses",
+            "personPhones",
+            "personMails"
+    })
+    @Query("""
+                select p
+                from Person p
+                where p.id = :id
+                order by p.name
+            """)
+    Optional<Person> findByIdWithRelations(Long id);
 }
