@@ -25,10 +25,9 @@ public interface PersonRepository extends JpaRepository<Person, Long>, JpaSpecif
             "personMails"
     })
     @Query("""
-                select p
+                select distinct p
                 from Person p
                 where p.id = :id
-                order by p.name
             """)
     Optional<Person> findByIdWithRelations(Long id);
 }
