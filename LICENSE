@@ -1,27 +1,33 @@
-CUSTOM LICENSE – EDUCATIONAL AND PORTFOLIO USE
+Cliente Fácil License
+Version 1.0
 
 Copyright (c) 2026 Roger Pelissoni
-All rights reserved.
 
-This software and its source code are provided for educational and portfolio purposes.
+The Cliente Fácil project is made publicly available for educational, personal, portfolio, and evaluation purposes.
 
-Permission is hereby granted to view, study, and modify this code for personal and educational use.
+You are permitted to:
 
-However, the following restrictions apply:
+- View and study the source code.
+- Fork this repository for personal or educational use.
+- Modify the source code for personal, educational, or research purposes.
+- Use portions of the code as a learning reference, provided this license and copyright notice are retained.
 
-1. Commercial use of this software, in whole or in part, is not allowed without prior written permission from the author.
+You may not, without prior written permission from the copyright holder:
 
-2. Redistribution of this software or any derivative work must include proper credit to the original author.
+- Use this software, in whole or in part, for commercial purposes.
+- Sell, sublicense, or redistribute this project as a commercial product.
+- Offer this software, or any substantially similar derivative, as a hosted service (SaaS).
+- Remove or modify this copyright notice.
+- Misrepresent this project or derivative works as the original Cliente Fácil project.
 
-3. This software may not be used in production environments without significant modifications and proper validation by the user.
+Creating derivative works for learning purposes is permitted. However, this license does not grant any right to commercialize this project or any derivative based on it.
 
-4. The author does not guarantee the completeness, reliability, or suitability of this software for any purpose.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
-DISCLAIMER:
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
 
-This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement.
+For commercial licensing, partnership opportunities, or other permissions, please contact:
 
-In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software.
-
-For commercial licensing or permissions, contact:
-Roger Pelissoni – rogerpelissoni@hotmail.com
+Roger Pelissoni
+Email: rogerpelissoni@hotmail.com
+GitHub: https://github.com/RogerPelissoni
