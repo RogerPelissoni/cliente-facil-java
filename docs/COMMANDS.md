@@ -1,103 +1,108 @@
-# 📦 Comandos Essenciais - Maven, Flyway, Docker e Spring Boot
+# 📦 COMMANDS.md
 
-## 🚀 Maven (mvn)
+Guia rápido com os principais comandos utilizados durante o desenvolvimento do Cliente Fácil.
 
-### ▶️ Rodar aplicação (Spring Boot)
+---
+
+# ☕ Maven
+
+## Executar a aplicação
 
 ```bash
 mvn spring-boot:run
 ```
 
-### 📦 Build do projeto (gera .jar)
+## Compilar o projeto
 
 ```bash
 mvn clean package
 ```
 
-### 🧹 Limpar build
-
-```bash
-mvn clean
-```
-
-### 🧹 Remoção forçada do build (⚠️ importante para Flyway)
-
-```bash
-rm -rf target
-```
-
-> ⚠️ Essencial quando migrations “fantasma” aparecem  
-> O Flyway lê os arquivos de:
->
-> target/classes/db/migration
->
-> Mesmo que você tenha removido/renomeado arquivos em:
->
-> src/main/resources/db/migration
->
-> Eles podem continuar existindo no target, causando erros como:
->
-> Found more than one migration with version X
-
----
-
-### 📥 Baixar dependências
-
-```bash
-mvn install
-```
-
-### 🔄 Rebuild completo
+## Instalar dependências e gerar build
 
 ```bash
 mvn clean install
 ```
 
-### 🚫 Pular testes
+## Build sem testes
 
 ```bash
 mvn clean install -DskipTests
 ```
 
+## Executar testes
+
+```bash
+mvn test
+```
+
+## Executar um teste específico
+
+```bash
+mvn test -Dtest=UserServiceTest
+```
+
+## Limpar build
+
+```bash
+mvn clean
+```
+
+## Limpar pasta de build (casos específicos)
+
+```bash
+rm -rf target
+```
+
+> Útil quando o Flyway continua encontrando migrations removidas.
+
+## Ver árvore de dependências
+
+```bash
+mvn dependency:tree
+```
+
+## Limpar cache local de dependências
+
+```bash
+mvn dependency:purge-local-repository
+```
+
 ---
 
-## 🗄️ Flyway
+# 🗄️ Flyway
 
-### ▶️ Executar migrations
+## Executar migrations
 
 ```bash
 mvn flyway:migrate
 ```
 
-### 🔍 Ver status das migrations
+## Verificar status
 
 ```bash
 mvn flyway:info
 ```
 
-### 🛠️ Reparar histórico (corrigir checksums)
+## Reparar checksums
 
 ```bash
 mvn flyway:repair
 ```
 
-### 🔥 Resetar banco (CUIDADO!)
+## Limpar banco (⚠️ Desenvolvimento apenas)
 
 ```bash
 mvn flyway:clean
 ```
 
-### 🔄 Reset completo + recriar estrutura
+## Limpar e recriar banco
 
 ```bash
 mvn flyway:clean flyway:migrate
 ```
 
----
-
-## ⚙️ Configuração importante (Spring Boot)
-
-### Habilitar clean (apenas DEV)
+Para permitir o comando `clean` em desenvolvimento:
 
 ```yaml
 spring:
@@ -107,152 +112,151 @@ spring:
 
 ---
 
-## 🐳 Docker
+# 🐳 Docker
 
-### ▶️ Subir containers
+## Subir containers
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-### 🔄 Rebuild containers
+## Recriar containers
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
-### 🛑 Parar containers
+## Parar containers
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
-### 📜 Ver logs
+## Remover containers e volumes
 
 ```bash
-docker-compose logs -f
+docker compose down -v
 ```
 
----
-
-## 🐳 Resetar banco de dados (PostgreSQL)
-
-### 🔥 Reset completo (remove volume e dados)
+## Visualizar logs
 
 ```bash
-docker-compose down -v
+docker compose logs -f
 ```
 
-### 🔄 Subir novamente banco zerado
+## Listar containers
 
 ```bash
-docker-compose up -d
-```
-
-### 🔁 Fluxo completo (reset + migrations)
-
-```bash
-docker-compose down -v
-docker-compose up -d
-mvn flyway:migrate
+docker compose ps
 ```
 
 ---
 
-## ⚠️ Alternativa (reset apenas do banco)
+# 🐘 PostgreSQL
 
-```bash
-rm -rf ../cliente-facil-database
-docker-compose up -d
-```
-
----
-
-## 🧠 Reset apenas do schema (sem destruir container)
+## Resetar apenas o schema
 
 ```bash
 docker exec -it db psql -U postgres -d clientefacil -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+```
+
+Depois execute:
+
+```bash
 mvn flyway:migrate
 ```
 
 ---
 
-## 🧪 Testes
+# 🚀 Fluxos recomendados
 
-### Rodar testes
-
-```bash
-mvn test
-```
-
-### Rodar testes com log detalhado
+## Primeira execução
 
 ```bash
-mvn test -X
-```
-
----
-
-## 📌 Dicas úteis
-
-### Quando algo estranho acontecer com migrations:
-
-```bash
-rm -rf target
-mvn clean install
-```
-
----
-
-### Para desenvolvimento:
-
-```bash
+docker compose up -d
 mvn spring-boot:run
 ```
 
----
-
-### Reset completo do banco:
+## Atualizar banco
 
 ```bash
-docker-compose down -v && docker-compose up -d && mvn flyway:migrate
+mvn flyway:migrate
+```
+
+## Build para distribuição
+
+```bash
+mvn clean package
+```
+
+## Reset completo do ambiente
+
+```bash
+docker compose down -v
+docker compose up -d
+mvn flyway:migrate
 ```
 
 ---
 
-## ⚠️ Atenção
+# 🛠️ Troubleshooting
 
-❌ Nunca rode:
+## Flyway encontrou migrations duplicadas
+
+```bash
+rm -rf target
+mvn clean
+```
+
+## Corrigir checksum
+
+```bash
+mvn flyway:repair
+```
+
+## Banco inconsistente
+
+```bash
+docker compose down -v
+docker compose up -d
+mvn flyway:migrate
+```
+
+---
+
+# 🔍 Verificações
+
+## Versão do Java
+
+```bash
+java -version
+```
+
+## Versão do Maven
+
+```bash
+mvn -version
+```
+
+## Versão do Docker
+
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+# ⚠️ Atenção
+
+Nunca execute os comandos abaixo em produção:
 
 ```bash
 mvn flyway:clean
 ```
 
-em produção.
-
-❌ Nunca rode:
-
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
-em ambiente com dados importantes.
-
----
-
-## ✅ Fluxo recomendado (DEV)
-
-```bash
-docker-compose up -d
-rm -rf target
-mvn flyway:migrate
-mvn spring-boot:run
-```
-
----
-
-## ⚡ Reset rápido (mais usado no dia a dia)
-
-```bash
-rm -rf ../cliente-facil-database && rm -rf target && docker-compose up -d && mvn flyway:migrate
-```
+Esses comandos removem dados do banco e devem ser utilizados apenas em ambiente de desenvolvimento.
