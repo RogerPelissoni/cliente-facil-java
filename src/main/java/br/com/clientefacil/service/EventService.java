@@ -7,8 +7,12 @@ import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.EventRequest;
 import br.com.clientefacil.dto.EventResponse;
 import br.com.clientefacil.entity.Event;
+import br.com.clientefacil.entity.EventOwner;
+import br.com.clientefacil.entity.User;
 import br.com.clientefacil.mapper.EventMapper;
+import br.com.clientefacil.repository.EventOwnerRepository;
 import br.com.clientefacil.repository.EventRepository;
+import br.com.clientefacil.repository.UserRepository;
 import br.com.clientefacil.search.EventSearchConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +33,8 @@ import java.util.stream.Collectors;
 public class EventService {
 
     private final EventRepository repository;
+    private final EventOwnerRepository eventOwnerRepository;
+    private final UserRepository userRepository;
     private final EventMapper mapper;
 
     public Page<EventResponse> search(DefaultSearchRequest request) {
@@ -60,13 +66,17 @@ public class EventService {
     }
 
     public List<EventResponse> findByAuthUser() {
-        var userId = SecurityUtil.getAuthenticatedUserId()
+        Long userId = SecurityUtil.getAuthenticatedUserId()
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return repository.findAllByUser(userId)
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
+    }
+
+    public EventResponse findById(Long id) {
+        return mapper.toResponse(findEntityById(id));
     }
 
     public Map<Long, String> keyValue() {
@@ -81,6 +91,8 @@ public class EventService {
     public EventResponse create(EventRequest request) {
         Event entity = mapper.toEntity(request);
         entity = repository.save(entity);
+
+        createEventOwner(entity);
 
         return mapper.toResponse(entity);
     }
@@ -98,7 +110,22 @@ public class EventService {
     }
 
     private Event findEntityById(Long id) {
-        return repository.findById(id)
+        Long userId = SecurityUtil.getAuthenticatedUserId()
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return repository.findById(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Evento não encontrada"));
+    }
+
+    private void createEventOwner(Event event) {
+        Long authUserId = SecurityUtil.getAuthenticatedUserId()
+                .orElseThrow(() -> new ResourceNotFoundException("User is not authenticated"));
+
+        User authUser = userRepository.findById(authUserId).orElseThrow(() -> new ResourceNotFoundException("Authenticated User not found"));
+
+        EventOwner eventOwner = new EventOwner();
+        eventOwner.setEvent(event);
+        eventOwner.setUser(authUser);
+        eventOwnerRepository.save(eventOwner);
     }
 }

@@ -47,6 +47,13 @@ public class EventController {
         return service.findByAuthUser();
     }
 
+    @Operation(summary = "FIND_BY_ID")
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('EVENT_VIEW')")
+    public EventResponse findById(@PathVariable Long id) {
+        return service.findById(id);
+    }
+
     @Operation(summary = "CREATE")
     @PostMapping
     @PreAuthorize("hasAuthority('EVENT_CREATE')")
