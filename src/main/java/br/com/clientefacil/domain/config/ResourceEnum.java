@@ -15,6 +15,11 @@ public enum ResourceEnum {
     COMPANY_UPDATE("Empresas - editar", ModuleCode.CORE),
     COMPANY_DELETE("Empresas - excluir", ModuleCode.CORE),
 
+    EVENT_VIEW("Eventos - visualizar", ModuleCode.CORE),
+    EVENT_CREATE("Eventos - criar", ModuleCode.CORE),
+    EVENT_UPDATE("Eventos - editar", ModuleCode.CORE),
+    EVENT_DELETE("Eventos - excluir", ModuleCode.CORE),
+
     PERSON_VIEW("Pessoas - visualizar", ModuleCode.CORE),
     PERSON_CREATE("Pessoas - criar", ModuleCode.CORE),
     PERSON_UPDATE("Pessoas - editar", ModuleCode.CORE),
