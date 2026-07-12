@@ -13,9 +13,9 @@ CREATE TABLE person_mail
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_person_mail_person_id FOREIGN KEY (person_id) REFERENCES person (id),
+    CONSTRAINT fk_person_mail_person_id FOREIGN KEY (person_id) REFERENCES person (id) ON UPDATE CASCADE ON DELETE CASCADE,
 
-    CONSTRAINT fk_person_mail_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_person_mail_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_person_mail_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_person_mail_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_person_mail_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_person_mail_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

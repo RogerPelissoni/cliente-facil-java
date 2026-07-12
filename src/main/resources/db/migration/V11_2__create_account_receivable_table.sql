@@ -24,8 +24,8 @@ CREATE TABLE account_receivable
 
     CONSTRAINT uk_account_receivable_title_installment_company UNIQUE (ds_code, nr_installment, company_id),
 
-    CONSTRAINT fk_account_receivable_person_id FOREIGN KEY (person_id) REFERENCES person (id),
-    CONSTRAINT fk_account_receivable_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_account_receivable_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_account_receivable_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_account_receivable_person_id FOREIGN KEY (person_id) REFERENCES person (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_account_receivable_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_account_receivable_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_account_receivable_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

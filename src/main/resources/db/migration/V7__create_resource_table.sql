@@ -14,8 +14,8 @@ CREATE TABLE resource
 
     CONSTRAINT uq_resource_signature_company UNIQUE (signature, company_id),
 
-    CONSTRAINT fk_resource_module_id FOREIGN KEY (module_id) REFERENCES module (id),
-    CONSTRAINT fk_resource_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_resource_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_resource_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_resource_module_id FOREIGN KEY (module_id) REFERENCES module (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_resource_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_resource_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_resource_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

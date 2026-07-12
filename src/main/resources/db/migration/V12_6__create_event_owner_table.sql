@@ -13,9 +13,9 @@ CREATE TABLE event_owner
 
     CONSTRAINT uk_event_owner_event_users UNIQUE (event_id, user_id),
 
-    CONSTRAINT fk_event_owner_event_id FOREIGN KEY (event_id) REFERENCES event (id),
-    CONSTRAINT fk_event_owner_user_id FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT fk_event_owner_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_event_owner_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_event_owner_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_event_owner_event_id FOREIGN KEY (event_id) REFERENCES event (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_event_owner_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_event_owner_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_event_owner_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_event_owner_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

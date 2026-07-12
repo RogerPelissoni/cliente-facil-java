@@ -13,9 +13,9 @@ CREATE TABLE profile_permission
 
     CONSTRAINT uq_profile_permission_profile_resource_company UNIQUE (profile_id, resource_id, company_id),
 
-    CONSTRAINT fk_profile_permission_profile_id FOREIGN KEY (profile_id) REFERENCES profile (id),
-    CONSTRAINT fk_profile_permission_resource_id FOREIGN KEY (resource_id) REFERENCES resource (id),
-    CONSTRAINT fk_profile_permission_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_profile_permission_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_profile_permission_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_profile_permission_profile_id FOREIGN KEY (profile_id) REFERENCES profile (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_profile_permission_resource_id FOREIGN KEY (resource_id) REFERENCES resource (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_profile_permission_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_profile_permission_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_profile_permission_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

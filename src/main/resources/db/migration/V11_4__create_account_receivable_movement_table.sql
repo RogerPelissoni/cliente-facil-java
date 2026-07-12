@@ -16,8 +16,8 @@ CREATE TABLE account_receivable_movement
     created_at            TIMESTAMP                                     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP                                     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_account_receivable_movement_account_receivable_id FOREIGN KEY (account_receivable_id) REFERENCES account_receivable (id),
-    CONSTRAINT fk_account_receivable_movement_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_account_receivable_movement_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_account_receivable_movement_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_account_receivable_movement_account_receivable_id FOREIGN KEY (account_receivable_id) REFERENCES account_receivable (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_account_receivable_movement_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_account_receivable_movement_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_account_receivable_movement_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

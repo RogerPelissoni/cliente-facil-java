@@ -1,4 +1,4 @@
-CREATE TABLE person_adress
+CREATE TABLE person_address
 (
     id            BIGSERIAL PRIMARY KEY,
 
@@ -19,9 +19,9 @@ CREATE TABLE person_adress
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_person_adress_person_id FOREIGN KEY (person_id) REFERENCES person (id),
+    CONSTRAINT fk_person_address_person_id FOREIGN KEY (person_id) REFERENCES person (id) ON UPDATE CASCADE ON DELETE CASCADE,
 
-    CONSTRAINT fk_person_adress_company_id FOREIGN KEY (company_id) REFERENCES company (id),
-    CONSTRAINT fk_person_adress_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    CONSTRAINT fk_person_adress_updated_by FOREIGN KEY (updated_by) REFERENCES users (id)
+    CONSTRAINT fk_person_address_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_person_address_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_person_address_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON UPDATE CASCADE ON DELETE RESTRICT
 );

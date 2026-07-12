@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "person_adress")
+@Table(name = "person_address")
 @Getter
 @Setter
 public class PersonAddress extends AbstractAuditableTenantEntity {
