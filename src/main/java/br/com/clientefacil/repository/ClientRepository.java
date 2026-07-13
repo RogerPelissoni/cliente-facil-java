@@ -13,7 +13,9 @@ import java.util.List;
 
 public interface ClientRepository extends JpaRepository<Client, Long>, JpaSpecificationExecutor<Client> {
     @Query("""
-                select c.id, p.name
+                select
+                    c.id as id,
+                    p.name as name
                 from Client c
                 join c.person p
                 order by p.name

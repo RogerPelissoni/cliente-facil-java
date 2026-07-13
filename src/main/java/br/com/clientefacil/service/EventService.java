@@ -6,13 +6,11 @@ import br.com.clientefacil.core.support.SortBuilder;
 import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.EventRequest;
 import br.com.clientefacil.dto.EventResponse;
-import br.com.clientefacil.entity.Event;
-import br.com.clientefacil.entity.EventOwner;
-import br.com.clientefacil.entity.User;
+import br.com.clientefacil.dto.EventWithRelationsResponse;
+import br.com.clientefacil.entity.*;
+import br.com.clientefacil.entity.enums.AccountReceivableStatusEnum;
 import br.com.clientefacil.mapper.EventMapper;
-import br.com.clientefacil.repository.EventOwnerRepository;
-import br.com.clientefacil.repository.EventRepository;
-import br.com.clientefacil.repository.UserRepository;
+import br.com.clientefacil.repository.*;
 import br.com.clientefacil.search.EventSearchConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +33,10 @@ public class EventService {
     private final EventRepository repository;
     private final EventOwnerRepository eventOwnerRepository;
     private final UserRepository userRepository;
+    private final EventServiceRepository eventServiceRepository;
+    private final AccountReceivableRepository accountReceivableRepository;
+    private final ClientRepository clientRepository;
+    private final ProfessionalRepository professionalRepository;
     private final EventMapper mapper;
 
     public Page<EventResponse> search(DefaultSearchRequest request) {
@@ -75,8 +77,8 @@ public class EventService {
                 .toList();
     }
 
-    public EventResponse findById(Long id) {
-        return mapper.toResponse(findEntityById(id));
+    public EventWithRelationsResponse findById(Long id) {
+        return mapper.toResponseComplete(findEntityById(id));
     }
 
     public Map<Long, String> keyValue() {
@@ -94,13 +96,22 @@ public class EventService {
 
         createEventOwner(entity);
 
+        br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
+        AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
+        persistEventService(request, eventService, accountReceivable);
+
         return mapper.toResponse(entity);
     }
 
     public EventResponse update(Long id, EventRequest request) {
         Event entity = findEntityById(id);
+
         mapper.updateEntityFromRequest(request, entity);
         repository.save(entity);
+
+        br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
+        AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
+        persistEventService(request, eventService, accountReceivable);
 
         return mapper.toResponse(entity);
     }
@@ -127,5 +138,68 @@ public class EventService {
         eventOwner.setEvent(event);
         eventOwner.setUser(authUser);
         eventOwnerRepository.save(eventOwner);
+    }
+
+    private void persistEventService(
+            EventRequest request,
+            br.com.clientefacil.entity.EventService eventService,
+            AccountReceivable accountReceivable
+    ) {
+
+        Client client = clientRepository
+                .findById(request.eventService().clientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+
+        Professional professional = professionalRepository
+                .findById(request.eventService().professionalId())
+                .orElseThrow(() -> new ResourceNotFoundException("Professional not found"));
+
+        eventService.setClient(client);
+        eventService.setProfessional(professional);
+        eventService.setAccountReceivable(accountReceivable);
+
+        eventServiceRepository.save(eventService);
+    }
+
+    private AccountReceivable persistAccountReceivable(
+            EventRequest request,
+            br.com.clientefacil.entity.EventService eventService
+    ) {
+
+        Client client = clientRepository
+                .findById(request.eventService().clientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+
+        AccountReceivable accountReceivable = eventService.getAccountReceivable();
+
+        if (accountReceivable == null) {
+
+            String lastCode = accountReceivableRepository.findLastCode().orElse("0");
+            String nextCode = String.valueOf(Long.parseLong(lastCode) + 1);
+
+            accountReceivable = new AccountReceivable();
+            accountReceivable.setDsCode(nextCode);
+        }
+
+        accountReceivable.setPerson(client.getPerson());
+        accountReceivable.setNrInstallment(1);
+        accountReceivable.setVlTotal(request.accountReceivable().vlTotal());
+        accountReceivable.setVlBalance(request.accountReceivable().vlTotal());
+        accountReceivable.setDaDue(request.accountReceivable().daDue());
+        accountReceivable.setTpStatus(AccountReceivableStatusEnum.PENDING);
+
+        return accountReceivableRepository.save(accountReceivable);
+    }
+
+    private br.com.clientefacil.entity.EventService getOrCreateEventService(Event event) {
+
+        br.com.clientefacil.entity.EventService eventService = event.getService();
+
+        if (eventService == null) {
+            eventService = new br.com.clientefacil.entity.EventService();
+            eventService.setEvent(event);
+        }
+
+        return eventService;
     }
 }

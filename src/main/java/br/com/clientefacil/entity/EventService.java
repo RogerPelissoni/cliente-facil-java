@@ -1,6 +1,6 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.core.entity.AbstractAuditableEntity;
+import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,13 +9,13 @@ import lombok.Setter;
 @Table(name = "event_service")
 @Getter
 @Setter
-public class EventService extends AbstractAuditableEntity {
+public class EventService extends AbstractAuditableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")
     private Event event;
 

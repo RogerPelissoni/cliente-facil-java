@@ -13,7 +13,9 @@ import java.util.List;
 
 public interface ProfessionalRepository extends JpaRepository<Professional, Long>, JpaSpecificationExecutor<Professional> {
     @Query("""
-                select pro.id, per.name
+                select
+                    pro.id as id,
+                    per.name as name
                 from Professional pro
                 join pro.person per
                 order by per.name

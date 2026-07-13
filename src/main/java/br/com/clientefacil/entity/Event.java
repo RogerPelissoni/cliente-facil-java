@@ -21,16 +21,16 @@ public class Event extends AbstractAuditableTenantEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="ds_title", nullable = false, length = 100)
+    @Column(name = "ds_title", nullable = false, length = 100)
     private String dsTitle;
 
     @Column(name = "ds_description")
     private String dsDocument;
 
-    @Column(name= "dt_start")
+    @Column(name = "dt_start")
     private LocalDateTime dtStart;
 
-    @Column(name= "dt_end")
+    @Column(name = "dt_end")
     private LocalDateTime dtEnd;
 
     @Column(name = "tp_status")
@@ -42,4 +42,7 @@ public class Event extends AbstractAuditableTenantEntity {
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private EventTypeEnum tpEvent;
+
+    @OneToOne(mappedBy = "event")
+    private EventService service;
 }

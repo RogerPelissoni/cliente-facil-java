@@ -20,7 +20,11 @@ public record EventRequest(
         @NotNull LocalDateTime dtEnd,
 
         @NotNull EventStatusEnum tpStatus,
-        
-        @NotNull EventTypeEnum tpEvent
+
+        @NotNull EventTypeEnum tpEvent,
+
+        EventServiceRequest eventService,
+
+        AccountReceivableRequest accountReceivable
 ) {
 }

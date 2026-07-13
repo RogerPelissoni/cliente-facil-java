@@ -29,10 +29,13 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @Query("""
                 select e
                 from Event e
-                join EventOwner eo
-                    ON eo.event.id = e.id
-                    AND eo.user.id = :userId
+                join EventOwner eo on eo.event = e
+                left join fetch e.service s
+                left join fetch s.client
+                left join fetch s.professional
+                left join fetch s.accountReceivable
                 where e.id = :id
+                  and eo.user.id = :userId
             """)
-    Optional<Event> findById(@NonNull Long id, Long userId);
+    Optional<Event> findById(@NonNull Long id, @NonNull Long userId);
 }

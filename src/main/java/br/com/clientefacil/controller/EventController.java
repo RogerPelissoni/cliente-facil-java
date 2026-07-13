@@ -1,9 +1,9 @@
 package br.com.clientefacil.controller;
 
-import br.com.clientefacil.dto.DefaultSearchRequest;
-import br.com.clientefacil.dto.EventRequest;
-import br.com.clientefacil.dto.EventResponse;
+import br.com.clientefacil.dto.*;
+import br.com.clientefacil.service.ClientService;
 import br.com.clientefacil.service.EventService;
+import br.com.clientefacil.service.ProfessionalService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/event")
@@ -20,6 +21,19 @@ import java.util.List;
 public class EventController {
 
     private final EventService service;
+    private final ClientService clientService;
+    private final ProfessionalService professionalService;
+
+    @Operation(summary = "SCREEN")
+    @PostMapping("/screen")
+    @PreAuthorize("hasAuthority('EVENT_VIEW')")
+    public EventScreenResponse screen() {
+        List<EventResponse> events = service.findByAuthUser();
+        Map<Long, String> kvClient = clientService.keyValue();
+        Map<Long, String> kvProfessional = professionalService.keyValue();
+
+        return new EventScreenResponse(events, kvClient, kvProfessional);
+    }
 
     @Operation(summary = "SEARCH")
     @PostMapping("/search")
@@ -50,7 +64,7 @@ public class EventController {
     @Operation(summary = "FIND_BY_ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('EVENT_VIEW')")
-    public EventResponse findById(@PathVariable Long id) {
+    public EventWithRelationsResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
