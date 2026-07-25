@@ -25,7 +25,7 @@ public class Event extends AbstractAuditableTenantEntity {
     private String dsTitle;
 
     @Column(name = "ds_description")
-    private String dsDocument;
+    private String dsDescription;
 
     @Column(name = "dt_start")
     private LocalDateTime dtStart;
