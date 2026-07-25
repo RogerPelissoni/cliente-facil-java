@@ -13,13 +13,16 @@ import java.util.List;
 
 @Mapper(
         componentModel = "spring",
-        uses = EventServiceMapper.class
+        uses = {
+                EventServiceMapper.class
+        }
 )
 public interface EventMapper extends CoreMapper<Event, EventResponse> {
 
     @Override
     EventResponse toResponse(Event event);
 
+    @Mapping(target = "accountReceivable", source = "eventService.accountReceivable")
     EventWithRelationsResponse toResponseComplete(Event event);
 
     @Override

@@ -5,7 +5,12 @@ import br.com.clientefacil.entity.EventService;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        uses = {
+                AccountReceivableMapper.class,
+        }
+)
 public interface EventServiceMapper {
 
     @Mapping(target = "clientId", source = "client.id")

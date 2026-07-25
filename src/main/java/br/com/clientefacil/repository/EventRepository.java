@@ -30,7 +30,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
                 select e
                 from Event e
                 join EventOwner eo on eo.event = e
-                left join fetch e.service s
+                left join fetch e.eventService s
                 left join fetch s.client
                 left join fetch s.professional
                 left join fetch s.accountReceivable

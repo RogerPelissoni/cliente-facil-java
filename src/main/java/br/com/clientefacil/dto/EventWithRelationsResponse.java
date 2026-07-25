@@ -13,6 +13,7 @@ public record EventWithRelationsResponse(
         LocalDateTime dtEnd,
         EventStatusEnum tpStatus,
         EventTypeEnum tpEvent,
-        EventServiceResponse service
+        EventServiceResponse eventService,
+        AccountReceivableResponse accountReceivable
 ) {
 }

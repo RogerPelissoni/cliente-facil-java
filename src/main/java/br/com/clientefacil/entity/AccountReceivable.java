@@ -50,4 +50,7 @@ public class AccountReceivable extends AbstractAuditableTenantEntity {
 
     @Column(name = "ds_observation")
     private LocalDateTime dsObservation;
+
+    @OneToOne(mappedBy = "accountReceivable")
+    private EventService eventService;
 }

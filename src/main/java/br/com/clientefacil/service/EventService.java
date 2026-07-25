@@ -193,7 +193,7 @@ public class EventService {
 
     private br.com.clientefacil.entity.EventService getOrCreateEventService(Event event) {
 
-        br.com.clientefacil.entity.EventService eventService = event.getService();
+        br.com.clientefacil.entity.EventService eventService = event.getEventService();
 
         if (eventService == null) {
             eventService = new br.com.clientefacil.entity.EventService();

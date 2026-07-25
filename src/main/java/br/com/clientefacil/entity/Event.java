@@ -44,5 +44,5 @@ public class Event extends AbstractAuditableTenantEntity {
     private EventTypeEnum tpEvent;
 
     @OneToOne(mappedBy = "event")
-    private EventService service;
+    private EventService eventService;
 }
