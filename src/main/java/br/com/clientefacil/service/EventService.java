@@ -12,6 +12,7 @@ import br.com.clientefacil.entity.enums.AccountReceivableStatusEnum;
 import br.com.clientefacil.mapper.EventMapper;
 import br.com.clientefacil.repository.*;
 import br.com.clientefacil.search.EventSearchConfig;
+import br.com.clientefacil.validator.AccountReceivableValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class EventService {
     private final ClientRepository clientRepository;
     private final ProfessionalRepository professionalRepository;
     private final EventMapper mapper;
+    private final AccountReceivableValidator accountReceivableValidator;
 
     public Page<EventResponse> search(DefaultSearchRequest request) {
         Pageable pageable = PageRequest.of(
@@ -105,6 +107,9 @@ public class EventService {
 
     public EventResponse update(Long id, EventRequest request) {
         Event entity = findEntityById(id);
+        Long accountReceivableId = entity.getEventService().getAccountReceivable().getId();
+
+        accountReceivableValidator.canUpdate(accountReceivableId);
 
         mapper.updateEntityFromRequest(request, entity);
         repository.save(entity);
@@ -117,6 +122,10 @@ public class EventService {
     }
 
     public void delete(Long id) {
+        Event entity = findEntityById(id);
+        Long accountReceivableId = entity.getEventService().getAccountReceivable().getId();
+
+        accountReceivableValidator.canDelete(accountReceivableId);
         repository.delete(findEntityById(id));
     }
 

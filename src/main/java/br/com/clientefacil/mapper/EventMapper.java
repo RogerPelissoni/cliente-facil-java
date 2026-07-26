@@ -28,8 +28,10 @@ public interface EventMapper extends CoreMapper<Event, EventResponse> {
     @Override
     List<EventResponse> toResponseList(List<Event> eventList);
 
+    @Mapping(target = "eventService", ignore = true)
     Event toEntity(EventRequest eventRequest);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "eventService", ignore = true)
     void updateEntityFromRequest(EventRequest request, @MappingTarget Event entity);
 }
