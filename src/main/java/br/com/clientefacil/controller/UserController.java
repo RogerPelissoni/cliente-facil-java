@@ -28,6 +28,15 @@ public class UserController {
     private final ProfileService profileService;
     private final CompanyService companyService;
 
+    // Sem @PreAuthorize("USER_VIEW") de propósito: diferente da tela de administração de usuários,
+    // aqui só id+nome são expostos (nada sensível), para alimentar seletores/pickers como o de
+    // destinatários de notificação — qualquer usuário autenticado pode precisar disso.
+    @Operation(summary = "KEY_VALUE")
+    @GetMapping("/key-value")
+    public Map<Long, String> keyValue() {
+        return service.keyValue();
+    }
+
     @Operation(summary = "SCREEN")
     @PostMapping("/screen")
     @PreAuthorize("hasAuthority('USER_VIEW')")

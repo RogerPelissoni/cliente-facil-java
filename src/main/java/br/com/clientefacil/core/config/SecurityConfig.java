@@ -48,6 +48,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // A API JavaScript nativa de WebSocket do navegador não permite enviar
+                        // header Authorization no handshake HTTP inicial, então esse upgrade
+                        // precisa ser permitAll. A autenticação de verdade acontece uma camada
+                        // acima, no frame STOMP CONNECT (que já pode carregar headers), via
+                        // StompAuthChannelInterceptor — ver essa classe para detalhes.
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

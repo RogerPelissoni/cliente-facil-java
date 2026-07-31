@@ -18,6 +18,15 @@ spring:
   flyway:
     enabled: true
 
+  # Dados de conexão com o broker RabbitMQ. Os defaults (localhost/guest) valem pra quando
+  # a aplicação roda fora do Docker; dentro do docker-compose essas envs são sobrescritas
+  # para apontar pro container "rabbitmq" (ver SPRING_RABBITMQ_* no docker-compose.yml).
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
 springdoc:
   swagger-ui:
     persist-authorization: true

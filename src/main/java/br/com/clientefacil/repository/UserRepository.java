@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
@@ -18,6 +19,13 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             "profile.permissions.resource"
     })
     Optional<User> findByEmail(String email);
+
+    @Query("""
+                    select u.id, u.name
+                    from User u
+                    order by u.name
+            """)
+    List<Object[]> keyValue();
 
     @EntityGraph(attributePaths = {
             "person",
