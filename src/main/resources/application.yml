@@ -26,6 +26,22 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # Se o listener (NotificationListener) lançar exceção, tenta de novo até 3 vezes,
+        # com backoff crescente (1s, depois 2s, depois 4s) antes de desistir da mensagem —
+        # em vez do padrão do Spring AMQP, que reenfileira e tenta de novo imediatamente,
+        # sem limite, martelando o listener e o broker indefinidamente.
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2
+          max-interval: 10000
+        # Depois de esgotar as tentativas acima, rejeita a mensagem sem reenfileirar — o
+        # que, combinado com o x-dead-letter-exchange configurado na fila (RabbitMQConfig),
+        # faz o RabbitMQ redirecionar a mensagem pra DLQ em vez de tentar pra sempre.
+        default-requeue-rejected: false
 
 springdoc:
   swagger-ui:

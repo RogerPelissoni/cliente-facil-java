@@ -365,13 +365,119 @@ oferecer, na interface, uma ação que o backend já ia recusar.
 3. No front, `useStompSubscription("/user/queue/pdf-export", callback)` — **zero mudança** em
    `StompProvider`.
 
+---
+
+# 🔁 Parte 6 — Retry + Dead Letter Queue no RabbitMQ
+
+Antes desta parte, se `NotificationListener.receive()` lançasse uma exceção por qualquer motivo (bug,
+mensagem malformada, banco fora do ar por um instante), o comportamento padrão do Spring AMQP era
+reenfileirar a mensagem e tentar de novo **imediatamente, para sempre** — um loop infinito martelando o
+listener e o broker, sem nenhuma visibilidade de que algo está errado.
+
+## O que foi configurado
+
+**Retry com backoff** (`application.yml`, `spring.rabbitmq.listener.simple.retry`): até 3 tentativas
+por mensagem, com espera crescente entre elas (1s, depois 2s, depois 4s) — dá tempo de uma falha
+transitória (ex: uma reconexão de banco) se resolver sozinha, sem martelar imediatamente.
+
+**Dead Letter Queue** (`RabbitMQConfig.java`): se mesmo após as 3 tentativas a mensagem continuar
+falhando, `default-requeue-rejected: false` faz o Spring rejeitá-la sem reenfileirar. A fila principal
+(`clientefacil.notification.queue`) tem os argumentos `x-dead-letter-exchange` /
+`x-dead-letter-routing-key` apontando para uma exchange e fila dedicadas
+(`clientefacil.notification.dlx` / `clientefacil.notification.queue.dlq`) — é o próprio RabbitMQ que
+redireciona a mensagem rejeitada pra lá, sem nenhum código adicional no lado da aplicação.
+
+Resultado: mensagens problemáticas ficam visíveis e paradas na DLQ (inspecionável em
+`http://localhost:15672` → Queues → `clientefacil.notification.queue.dlq`) em vez de desaparecer
+silenciosamente ou reprocessar pra sempre. Reprocessamento automático continua fora do escopo — mas a
+Parte 7 abaixo cobre o que consome essa fila para dar visibilidade a quem chega lá.
+
+## Como testar
+
+Publicar uma mensagem que não corresponde ao formato de `NotificationMessageDTO` diretamente na
+exchange (ex: via `http://localhost:15672` → Exchanges → `clientefacil.notification.exchange` →
+Publish message, routing key `clientefacil.notification`, payload
+`{"userId": "não-é-um-número", "type": "INFO", "title": "x", "message": "y"}`) força uma falha de
+desserialização. Após ~7s (1+2+4 de backoff), a mensagem sai da fila principal e aparece na DLQ.
+
+> Validado manualmente exatamente assim: a fila principal voltou a `0` mensagens e a DLQ recebeu a
+> mensagem malformada, confirmando que o loop infinito anterior não acontece mais.
+
+---
+
+# 🪦 Parte 7 — Consumindo a DLQ: auditoria em banco + alerta em tempo real
+
+A DLQ do RabbitMQ sozinha resolve "não perder a mensagem", mas tem três limites: não é consultável
+junto com o resto dos dados da aplicação, não tem retenção/alerta embutido, e não sobrevive a um reset
+do ambiente (ex: `docker compose down -v`, que é um fluxo normal em dev). Por isso o padrão de mercado
+para lidar com uma DLQ (o *Dead Letter Channel* de Enterprise Integration Patterns) normalmente soma
+três peças: a fila em si (retenção/replay — já tínhamos), **um consumer dedicado da DLQ** que registra o
+que aconteceu, e **alerta** de quem precisa saber. As duas últimas são o que esta parte adiciona.
+
+## `notification_dead_letter` — auditoria mínima
+
+Migration `V13_4__create_notification_dead_letter_table.sql` + `entity/NotificationDeadLetter.java`:
+tabela simples, **sem `company_id`/tenant** (é um log operacional da infraestrutura de mensageria, não
+um dado de negócio de uma empresa específica), com o payload cru da mensagem morta, o motivo (`reason`
+do header `x-death` que o próprio RabbitMQ adiciona: `rejected`, `expired`, etc.), quantas vezes já foi
+parar numa DLQ (`count`) e quando.
+
+## `messaging/NotificationDeadLetterListener.java`
+
+```java
+@RabbitListener(queues = RabbitMQConfig.NOTIFICATION_DLQ)
+public void receive(Message message) { ... }
+```
+
+Dois detalhes de design que valem a pena registrar:
+
+- **Consome `org.springframework.amqp.core.Message` (envelope cru), não `NotificationMessageDTO`.**
+  A mensagem já demonstrou que pode estar malformada — foi por isso que ela chegou até aqui — então
+  reaproveitar a mesma desserialização automática que originalmente falhou só criaria uma segunda
+  chance de falhar por conversão. Lendo o `Message` cru, o body vira uma `String` sem risco de erro de
+  parsing, e o parsing do header `x-death` é feito manualmente e de forma defensiva (`try/catch`),
+  porque o formato desse header não é garantido pelo broker.
+- **Não republica pela mesma fila/exchange de notificações.** Cogitamos reaproveitar 100% o pipeline
+  existente (`NotificationPublisher` → fila → `NotificationListener`) para gerar uma notificação de
+  alerta, mas isso criaria um risco real: se a causa da falha for sistêmica (ex: banco fora do ar), a
+  própria notificação de alerta cairia na DLQ de novo, gerando outro alerta, em loop. Por isso o alerta
+  é emitido **direto** via `SimpMessagingTemplate`, sem passar pelo RabbitMQ de novo.
+
+## Alerta em tempo real: broadcast, não por usuário
+
+```java
+public static final String DEAD_LETTER_DESTINATION = "/topic/system/dead-letters";
+messagingTemplate.convertAndSend(DEAD_LETTER_DESTINATION, new NotificationDeadLetterAlert(...));
+```
+
+Até agora só usamos destinos `/queue/...` (`convertAndSendToUser`, 1 para 1 — ver Parte 3). Esse é o
+primeiro uso de `/topic` (já habilitado no broker desde o início, em `WebSocketConfig`): broadcast, para
+qualquer sessão STOMP conectada que assine esse destino. `NotificationDeadLetterAlert` carrega só
+metadados (id do registro, motivo, contagem, horário) — nunca o conteúdo original da notificação
+(título/mensagem), que pertence a um usuário específico e pode ser sensível.
+
+Não existe hoje nenhum consumidor desse destino no frontend — é infraestrutura pronta para o próximo
+passo natural (uma tela de operação/admin), no mesmo espírito de "construir a infra genérica antes de
+precisar dela" que motivou o STOMP desde a Parte 3. Validado manualmente com um cliente STOMP avulso
+(script Node com `@stomp/stompjs`, mesmo pacote do frontend) publicando uma mensagem malformada e
+confirmando: linha em `notification_dead_letter`, log estruturado (`ERROR`) e o alerta chegando no
+`/topic/system/dead-letters` em tempo real.
+
+---
+
 ## Limitações conhecidas (propositais, documentadas)
 
-- **Sem retry/DLQ no RabbitMQ** — mensagens que falham no consumo voltam pra fila indefinidamente
-  (requeue automático do Spring AMQP em caso de exceção no listener).
 - **`GET /api/v1/notifications` não pagina** — retorna só as últimas 50; suficiente para um sino de
   notificações, mas um histórico completo precisaria do padrão de busca paginada já usado em outras
-  entidades do projeto (`SearchRequest`/`SpecificationBuilder`).
-Nenhuma dessas limitações impede o uso real do recurso — a diferença desta versão para a v1 é que a
-tabela `notification`, a persistência e o roteamento por usuário via STOMP **já são produção-viáveis**;
-só a autenticação do WebSocket (item 1) tem uma melhoria natural pendente.
+  entidades do projeto (`SearchRequest`/`SpecificationBuilder`). Deixado de fora de propósito: hoje
+  alimenta só o sino (modal simples), não uma tela de histórico — faz mais sentido implementar
+  paginação junto quando essa tela existir de verdade.
+- **`notification_dead_letter` não tem um conceito de "resolvido"** — hoje é só um log de auditoria,
+  sem nenhuma tela para visualizá-lo (só consulta direta em banco). Um campo tipo
+  `dt_resolved`/`resolved_by` (mesmo padrão de `dt_read` em `notification`) é a evolução natural, mas
+  faz mais sentido junto de uma tela de administração real — adicionar o campo antes disso existiria
+  sem ninguém para usá-lo.
+
+Nenhuma dessas limitações impede o uso real do recurso — a tabela `notification`, a persistência, o
+roteamento por usuário via STOMP (autenticado via ws-ticket), a permissão dedicada para disparo manual,
+o retry/DLQ do RabbitMQ e a auditoria + alerta da DLQ **já são produção-viáveis**.
