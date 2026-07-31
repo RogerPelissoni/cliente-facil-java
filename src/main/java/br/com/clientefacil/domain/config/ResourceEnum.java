@@ -22,6 +22,9 @@ public enum ResourceEnum {
 
     NOTIFICATION_SEND("Notificações - enviar para outros usuários", ModuleCode.CORE),
 
+    DEAD_LETTER_VIEW("Mensageria - visualizar falhas (DLQ)", ModuleCode.CORE),
+    DEAD_LETTER_RESOLVE("Mensageria - marcar falhas como resolvidas", ModuleCode.CORE),
+
     PERSON_VIEW("Pessoas - visualizar", ModuleCode.CORE),
     PERSON_CREATE("Pessoas - criar", ModuleCode.CORE),
     PERSON_UPDATE("Pessoas - editar", ModuleCode.CORE),

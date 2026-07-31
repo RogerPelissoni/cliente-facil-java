@@ -36,4 +36,9 @@ public class NotificationDeadLetter extends AbstractAuditableEntity {
 
     @Column(name = "dt_failed_at")
     private LocalDateTime dtFailedAt;
+
+    // null = pendente. Quem resolveu e quando fica em updated_by/updated_at (herdado de
+    // AbstractAuditableEntity) — resolver é a única mutação possível após a criação do registro.
+    @Column(name = "dt_resolved")
+    private LocalDateTime dtResolved;
 }

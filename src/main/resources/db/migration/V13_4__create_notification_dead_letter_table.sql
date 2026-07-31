@@ -6,6 +6,7 @@ CREATE TABLE notification_dead_letter
     ds_error_reason VARCHAR(255),
     nr_death_count  INTEGER,
     dt_failed_at    TIMESTAMP,
+    dt_resolved     TIMESTAMP,
 
     created_by      BIGINT,
     updated_by      BIGINT,

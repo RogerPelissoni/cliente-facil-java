@@ -420,7 +420,10 @@ Migration `V13_4__create_notification_dead_letter_table.sql` + `entity/Notificat
 tabela simples, **sem `company_id`/tenant** (é um log operacional da infraestrutura de mensageria, não
 um dado de negócio de uma empresa específica), com o payload cru da mensagem morta, o motivo (`reason`
 do header `x-death` que o próprio RabbitMQ adiciona: `rejected`, `expired`, etc.), quantas vezes já foi
-parar numa DLQ (`count`) e quando.
+parar numa DLQ (`count`), quando, e `dt_resolved` (nulo = pendente — mesmo padrão de `dt_read` em
+`notification`). Quem resolveu e quando fica em `updated_by`/`updated_at` (herdados de
+`AbstractAuditableEntity`): resolver é a única mutação possível depois que o registro é criado, então
+não precisa de uma coluna dedicada `resolved_by`.
 
 ## `messaging/NotificationDeadLetterListener.java`
 
@@ -456,12 +459,54 @@ qualquer sessão STOMP conectada que assine esse destino. `NotificationDeadLette
 metadados (id do registro, motivo, contagem, horário) — nunca o conteúdo original da notificação
 (título/mensagem), que pertence a um usuário específico e pode ser sensível.
 
-Não existe hoje nenhum consumidor desse destino no frontend — é infraestrutura pronta para o próximo
-passo natural (uma tela de operação/admin), no mesmo espírito de "construir a infra genérica antes de
-precisar dela" que motivou o STOMP desde a Parte 3. Validado manualmente com um cliente STOMP avulso
-(script Node com `@stomp/stompjs`, mesmo pacote do frontend) publicando uma mensagem malformada e
-confirmando: linha em `notification_dead_letter`, log estruturado (`ERROR`) e o alerta chegando no
-`/topic/system/dead-letters` em tempo real.
+Validado manualmente com um cliente STOMP avulso (script Node com `@stomp/stompjs`, mesmo pacote do
+frontend) publicando uma mensagem malformada e confirmando: linha em `notification_dead_letter`, log
+estruturado (`ERROR`) e o alerta chegando no `/topic/system/dead-letters` em tempo real.
+
+## Duas permissões novas: `DEAD_LETTER_VIEW` e `DEAD_LETTER_RESOLVE`
+
+Mesmo padrão de `NOTIFICATION_SEND` (Parte 4): entradas em `ResourceEnum`, sincronizadas
+automaticamente pelo `AuthorizationSeeder` e concedidas ao perfil "Admin" pelo `MainSeeder`. Duas em vez
+de uma porque são capacidades diferentes — dá pra alguém enxergar o painel sem poder encerrar um
+registro. `DEAD_LETTER_VIEW` também é o que decide **quem recebe o alerta** (próximo tópico) e se o item
+de menu "Administração → Mensageria (DLQ)" aparece no front (`useHasAuthority`, `menu.ts`).
+
+## Notificação real para quem administra a mensageria
+
+Além do broadcast (que só serve quem está com o painel aberto no momento), `NotificationDeadLetterListener`
+também gera uma notificação de verdade — aparece no sino, sobrevive a um refresh — para todo usuário com
+`DEAD_LETTER_VIEW`:
+
+```java
+List<Long> adminUserIds = userRepository.findUserIdsByResourceSignature(ResourceEnum.DEAD_LETTER_VIEW.getSignature());
+// para cada um: notificationService.create(...) + messagingTemplate.convertAndSendToUser(...)
+```
+
+Mesma ressalva da Parte 3: isso **não** passa pelo RabbitMQ (evita o loop já explicado acima) — é uma
+chamada direta a `NotificationService`, igual o `NotificationListener` do fluxo normal faz, só que sem
+depender da fila para chegar até lá. É best-effort (`try/catch` ao redor de tudo): se não houver nenhum
+usuário com a permissão, ou a busca falhar, o processamento da DLQ em si não é afetado — só fica sem
+avisar ninguém, o registro em `notification_dead_letter` continua existindo normalmente.
+
+## Painel administrativo (`/dashboard/admin/dead-letters`)
+
+Segue o padrão de listagem já estabelecido no projeto (`DefaultSearchRequest` +
+`SpecificationBuilder`/`SortBuilder` no backend, `useTableState` + `DataTable` no front — o mesmo usado
+em Empresas, Clientes etc.), com dois acréscimos:
+
+- **Cards de resumo** (`NotificationDeadLetterStats.tsx`) — pendentes, resolvidos, últimas 24h, vindos
+  de `GET /notifications/dead-letters/stats`. Pensado para crescer: cada novo "insight" vira só mais um
+  campo em `NotificationDeadLetterStatsResponse` e mais um item no array de cards, sem mexer no resto.
+- **Filtro de status pendente/resolvido** via `IS_NULL`/`IS_NOT_NULL` em `dtResolved` — o helper genérico
+  do front (`makeSearchRequest`, sempre `LIKE`) não cobria isso, então `notificationDeadLetter.api.ts`
+  monta os `FilterRequest` manualmente em vez de usar `createCrudApi`. Aproveitando isso, também corrigi
+  o tipo `FilterOperator` do front (`src/shared/types/form.type.ts`), que estava com nomes que não
+  batiam com o enum real do backend (`EQUALS`/`GREATER_THAN`/... em vez de `EQ`/`GT`/...) — não
+  quebrava nada porque nada além do `LIKE` hardcoded era usado até agora, mas teria mascarado um erro
+  silencioso no primeiro filtro novo que precisasse de outro operador.
+
+Ação "Resolver" na tabela: `PATCH /notifications/dead-letters/{id}/resolve`, só visível para quem tem
+`DEAD_LETTER_RESOLVE` (`useHasAuthority`) e só para itens ainda pendentes.
 
 ---
 
@@ -472,12 +517,12 @@ confirmando: linha em `notification_dead_letter`, log estruturado (`ERROR`) e o 
   entidades do projeto (`SearchRequest`/`SpecificationBuilder`). Deixado de fora de propósito: hoje
   alimenta só o sino (modal simples), não uma tela de histórico — faz mais sentido implementar
   paginação junto quando essa tela existir de verdade.
-- **`notification_dead_letter` não tem um conceito de "resolvido"** — hoje é só um log de auditoria,
-  sem nenhuma tela para visualizá-lo (só consulta direta em banco). Um campo tipo
-  `dt_resolved`/`resolved_by` (mesmo padrão de `dt_read` em `notification`) é a evolução natural, mas
-  faz mais sentido junto de uma tela de administração real — adicionar o campo antes disso existiria
-  sem ninguém para usá-lo.
+- **O alerta de dead letter só existe dentro do app** (sino + broadcast em tempo real) — ninguém é
+  avisado se estiver deslogado quando a falha acontece. Enviar e-mail (e futuramente outros canais, tipo
+  Slack) é a evolução natural, mas é escopo novo: precisa de um serviço de envio de e-mail configurado
+  no projeto, que ainda não existe hoje e será necessário para outras finalidades além desta.
 
 Nenhuma dessas limitações impede o uso real do recurso — a tabela `notification`, a persistência, o
-roteamento por usuário via STOMP (autenticado via ws-ticket), a permissão dedicada para disparo manual,
-o retry/DLQ do RabbitMQ e a auditoria + alerta da DLQ **já são produção-viáveis**.
+roteamento por usuário via STOMP (autenticado via ws-ticket), as permissões dedicadas, o retry/DLQ do
+RabbitMQ e o painel administrativo de dead letters (auditoria, alerta em tempo real, notificação real e
+resolução) **já são produção-viáveis**.

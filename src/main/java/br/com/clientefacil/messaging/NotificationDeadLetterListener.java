@@ -1,8 +1,13 @@
 package br.com.clientefacil.messaging;
 
 import br.com.clientefacil.core.config.RabbitMQConfig;
+import br.com.clientefacil.domain.config.ResourceEnum;
+import br.com.clientefacil.dto.NotificationResponse;
 import br.com.clientefacil.entity.NotificationDeadLetter;
+import br.com.clientefacil.entity.enums.NotificationTypeEnum;
 import br.com.clientefacil.repository.NotificationDeadLetterRepository;
+import br.com.clientefacil.repository.UserRepository;
+import br.com.clientefacil.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -39,6 +44,8 @@ public class NotificationDeadLetterListener {
     public static final String DEAD_LETTER_DESTINATION = "/topic/system/dead-letters";
 
     private final NotificationDeadLetterRepository repository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_DLQ)
@@ -58,6 +65,35 @@ public class NotificationDeadLetterListener {
 
         messagingTemplate.convertAndSend(DEAD_LETTER_DESTINATION, new NotificationDeadLetterAlert(
                 entity.getId(), entity.getDsErrorReason(), entity.getNrDeathCount(), entity.getDtFailedAt()));
+
+        notifyAdmins(entity);
+    }
+
+    // Gera uma notificação real (sino) para quem administra a mensageria — não passa pela fila de
+    // novo (ver javadoc da classe): persiste e empurra via STOMP diretamente, do mesmo jeito que
+    // NotificationListener faz para o fluxo normal, só que sem depender do RabbitMQ para isso.
+    // Best-effort: uma falha aqui (ex: nenhum admin cadastrado) não pode derrubar o processamento
+    // da DLQ em si, então erros só são logados.
+    private void notifyAdmins(NotificationDeadLetter deadLetter) {
+        try {
+            List<Long> adminUserIds = userRepository.findUserIdsByResourceSignature(
+                    ResourceEnum.DEAD_LETTER_VIEW.getSignature());
+
+            String message = "Uma mensagem de notificação (motivo: %s) esgotou as tentativas de reprocessamento e caiu na fila de falhas (registro #%d)."
+                    .formatted(deadLetter.getDsErrorReason(), deadLetter.getId());
+
+            for (Long adminUserId : adminUserIds) {
+                NotificationMessageDTO alert = new NotificationMessageDTO(
+                        adminUserId, NotificationTypeEnum.ERROR, "Falha no processamento de notificação", message);
+
+                NotificationResponse notification = notificationService.create(alert);
+
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(adminUserId), NotificationListener.NOTIFICATION_DESTINATION, notification);
+            }
+        } catch (Exception e) {
+            log.warn("Não foi possível gerar a notificação de alerta para os administradores", e);
+        }
     }
 
     // "x-death" é o header que o próprio RabbitMQ adiciona ao redirecionar uma mensagem para uma

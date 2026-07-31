@@ -34,4 +34,14 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     })
     @Query("select u from User u")
     Page<User> findAllWithRelations(Pageable pageable);
+
+    @Query("""
+                    select distinct u.id
+                    from User u
+                    join u.profile p
+                    join p.permissions pp
+                    join pp.resource r
+                    where r.signature = :signature
+            """)
+    List<Long> findUserIdsByResourceSignature(String signature);
 }
