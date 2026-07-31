@@ -20,6 +20,8 @@ public enum ResourceEnum {
     EVENT_UPDATE("Eventos - editar", ModuleCode.CORE),
     EVENT_DELETE("Eventos - excluir", ModuleCode.CORE),
 
+    NOTIFICATION_SEND("Notificações - enviar para outros usuários", ModuleCode.CORE),
+
     PERSON_VIEW("Pessoas - visualizar", ModuleCode.CORE),
     PERSON_CREATE("Pessoas - criar", ModuleCode.CORE),
     PERSON_UPDATE("Pessoas - editar", ModuleCode.CORE),

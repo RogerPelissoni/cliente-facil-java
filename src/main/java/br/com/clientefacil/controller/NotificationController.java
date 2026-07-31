@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -62,6 +63,7 @@ public class NotificationController {
     @Operation(summary = "SEND_TO_USERS")
     @PostMapping("/send")
     @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasAuthority('NOTIFICATION_SEND')")
     public void send(@RequestBody @Valid NotificationSendRequest request) {
         NotificationTypeEnum type = request.type() != null ? request.type() : NotificationTypeEnum.INFO;
 

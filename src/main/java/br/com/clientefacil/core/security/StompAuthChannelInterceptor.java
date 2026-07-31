@@ -1,8 +1,5 @@
 package br.com.clientefacil.core.security;
 
-import br.com.clientefacil.core.security.entity.AuthenticatedUser;
-import br.com.clientefacil.core.service.AuthenticatedUserService;
-import br.com.clientefacil.core.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -13,29 +10,32 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
 /**
- * Equivalente do JwtFilter (que autentica requisições HTTP), só que para o handshake STOMP.
+ * Autentica o handshake STOMP (frame CONNECT) — equivalente ao JwtFilter, mas para WebSocket.
  * <p>
  * O upgrade HTTP inicial de WebSocket (GET /ws) não carrega o header Authorization — a API
  * nativa do navegador não permite enviar headers customizados nessa etapa, por isso /ws/**
  * é permitAll no SecurityConfig. Mas uma vez que a conexão WebSocket está aberta, o cliente
  * STOMP manda um frame CONNECT que É uma mensagem de aplicação comum, e essa sim pode carregar
- * headers arbitrários — inclusive um "Authorization: Bearer ...". É esse frame que autenticamos
- * aqui, exatamente como o JwtFilter faz para requisições REST.
+ * headers arbitrários.
  * <p>
- * Se o token for válido, associamos um StompPrincipal(userId) à sessão STOMP. É esse principal
+ * Diferente do JwtFilter, aqui não validamos o JWT completo: o header Authorization carrega um
+ * "ws-ticket" — um token efêmero, de uso único, emitido por GET /api/v1/auth/ws-ticket (que esse
+ * sim exige o JWT completo para ser gerado). Isso evita que o JWT de 24h precise ser exposto ao
+ * JS do navegador só para autenticar essa conexão — ver WsTicketService.
+ * <p>
+ * Se o ticket for válido, associamos um StompPrincipal(userId) à sessão STOMP. É esse principal
  * que o Spring usa depois para rotear mensagens "para o usuário X" via
  * SimpMessagingTemplate.convertAndSendToUser(userId, destino, payload) — ver NotificationListener.
  * <p>
- * Se o token for inválido/ausente, a conexão segue sem principal (mesma filosofia do JwtFilter:
- * não autenticado, mas não derruba a conexão) — nesse caso a sessão simplesmente nunca recebe
+ * Se o ticket for inválido/ausente/expirado, a conexão segue sem principal (mesma filosofia do
+ * JwtFilter: não autenticado, mas não derruba a conexão) — a sessão simplesmente nunca recebe
  * nada endereçado a um usuário específico.
  */
 @Component
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
-    private final JwtService jwtService;
-    private final AuthenticatedUserService authenticatedUserService;
+    private final WsTicketService wsTicketService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -55,15 +55,9 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return;
         }
 
-        try {
-            String token = authorizationHeader.substring(7).trim();
-            String email = jwtService.extractEmail(token);
+        String ticket = authorizationHeader.substring(7).trim();
 
-            if (email != null && jwtService.isTokenValid(token, email)) {
-                AuthenticatedUser user = authenticatedUserService.loadByEmail(email);
-                accessor.setUser(new StompPrincipal(String.valueOf(user.getUserId())));
-            }
-        } catch (Exception ignored) {
-        }
+        wsTicketService.consume(ticket)
+                .ifPresent(userId -> accessor.setUser(new StompPrincipal(String.valueOf(userId))));
     }
 }

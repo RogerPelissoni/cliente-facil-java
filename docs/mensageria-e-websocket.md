@@ -164,15 +164,33 @@ converter manualmente (a v1, com WebSocket cru, precisava de um `ObjectMapper` e
 
 #### `GET /api/ws-token` (`src/app/api/ws-token/route.ts`)
 O JWT fica em cookie `httpOnly` (inacessível ao JS do navegador) — mesma razão documentada na v1. Como
-agora a autenticação acontece no frame STOMP CONNECT (que o JS do navegador monta e envia), o
-JavaScript precisa ter o token em mãos. Essa rota, rodando no servidor Next.js, lê o cookie e devolve o
-token ao cliente.
+a autenticação acontece no frame STOMP CONNECT (que o JS do navegador monta e envia), o JavaScript
+precisa ter *algum* token em mãos.
 
-> ⚠️ **Trade-off consciente**: isso expõe o JWT ao JS do navegador (perde a proteção httpOnly
-> especificamente para essa cópia do token). Não é uma superfície de ataque nova — o mesmo token já
-> trafega em todo header `Authorization` das chamadas REST via `/api/proxy` — mas é menos "correto" que
-> um token dedicado e efêmero. Melhoria natural para produção: trocar por um "ws-ticket" de curta
-> duração e uso único, gerado por um endpoint autenticado específico, em vez do JWT completo de 24h.
+A versão inicial deste endpoint devolvia o JWT completo (24h de validade) ao navegador — funcionava,
+mas expunha um token de vida longa a qualquer script rodando na página, sem necessidade. Foi corrigido
+para um esquema de **ticket efêmero**:
+
+1. Esta rota, rodando no servidor Next.js, usa o JWT (só ela tem acesso ao cookie) para chamar
+   `GET /api/v1/auth/ws-ticket` no backend — endpoint autenticado que gera um token opaco aleatório
+   (`UUID`), guardado em memória (`core/security/WsTicketService.java`) associado ao `userId`, válido
+   por **30 segundos** e **de uso único**.
+2. A rota devolve só esse ticket ao navegador (`{ ticket }`) — nunca o JWT.
+3. O `StompProvider` manda o ticket como `Authorization: Bearer <ticket>` no frame CONNECT.
+4. `StompAuthChannelInterceptor` chama `wsTicketService.consume(ticket)`: se existir e não tiver
+   expirado, remove da memória (por isso "uso único") e retorna o `userId` associado — sem precisar
+   validar assinatura JWT nem consultar o banco, já que o ticket *é* a prova de autenticação, emitida
+   por um endpoint que já exigiu o JWT completo.
+
+Se alguém capturar esse ticket (ex: via um XSS pontual), a janela de exploração é de segundos e só serve
+para uma única conexão — bem diferente de vazar um JWT de 24h reutilizável em qualquer chamada da API.
+Validado manualmente: reconectar com um ticket já consumido resulta numa sessão STOMP sem `Principal`
+associado (conecta, mas nunca recebe nada endereçado a um usuário).
+
+> Trade-off que permanece, documentado por completude: o ticket ainda não está atado à sessão/IP de
+> quem o pediu (qualquer processo que capture o ticket dentro da janela de 30s consegue usá-lo uma vez).
+> Suficiente para o risco atual do projeto; endurecer mais isso teria retorno decrescente frente à
+> complexidade adicional.
 
 #### `src/shared/providers/StompProvider.tsx` — infra genérica reutilizável
 Abre **uma única conexão STOMP** para toda a área autenticada (`dashboard/layout.tsx`), usando
@@ -257,9 +275,28 @@ para escolher um destinatário, sem precisar da permissão administrativa de "ve
 
 O controller simplesmente publica uma `NotificationMessageDTO` por `userId` na mesma fila que
 `/notifications/test` já usa — não existe conceito de "notificação em massa" no RabbitMQ aqui, é N
-mensagens individuais, cada uma seguindo o fluxo normal (fila → listener → persiste → STOMP). Gatilho
-via `@PreAuthorize`: nenhum além de autenticação, pelo mesmo motivo do picker (se você consegue ver a
-lista de destinatários, consegue notificá-los).
+mensagens individuais, cada uma seguindo o fluxo normal (fila → listener → persiste → STOMP).
+
+**Permissão dedicada**: diferente do picker (`/users/key-value`, que só expõe id+nome), disparar
+notificações para outras pessoas é uma ação com efeito real sobre terceiros — por isso o endpoint
+exige `@PreAuthorize("hasAuthority('NOTIFICATION_SEND')")`. Foi adicionado um novo valor em
+`domain/config/ResourceEnum.java` (`NOTIFICATION_SEND`), seguindo exatamente o padrão já usado por
+todo o resto do projeto (`EVENT_VIEW`, `USER_CREATE`, etc.):
+
+- `AuthorizationSeeder` cria automaticamente o `Resource` correspondente no banco a cada start da
+  aplicação (sincroniza `ResourceEnum` ↔ tabela `resource`).
+- `MainSeeder` concede automaticamente todo `Resource` ainda não atribuído ao perfil "Admin" — por
+  isso o usuário `admin@admin.com` já tem essa permissão sem nenhum passo manual.
+- Para outros perfis, a permissão precisa ser concedida explicitamente pela tela de Perfis
+  (`ProfilePermission`), como qualquer outra autoridade do sistema.
+
+Validado manualmente revogando e restaurando a permissão do perfil Admin em banco: sem
+`NOTIFICATION_SEND`, o endpoint responde `403`; com ela, `202`, confirmando que o `@PreAuthorize`
+está de fato bloqueando quem não tem a autoridade.
+
+**Atualização**: o botão "Enviar notificação" (em `NotificationBell.tsx`) agora só aparece para quem
+tem `NOTIFICATION_SEND` — ver Parte 5, que generaliza isso para qualquer botão/ação do sistema, não só
+este.
 
 ## `SendNotificationModal.tsx`
 
@@ -269,6 +306,54 @@ aqui para seleção múltipla), campo de tipo (`Select`, mesmas 4 opções de `t
 Usa estado local simples (`useState`), não `react-hook-form`/`zod` como os formulários de CRUD do
 projeto — decisão deliberada: isso não é um formulário de entidade persistida no front, é um "compor e
 disparar" de uma ação pontual, então a infraestrutura mais pesada de formulário não se paga aqui.
+
+---
+
+# 🔑 Parte 5 — Permissões no front-end (`useHasAuthority`)
+
+Até aqui, nenhuma tela do projeto verificava autoridade no client-side: o `@PreAuthorize` do backend
+era a única proteção, e um usuário sem permissão só descobria isso ao tentar a ação (toast de erro
+com o `403`). Funcional, mas ruim de UX — oferecer um botão que sempre vai falhar para aquele usuário.
+
+Isso foi generalizado (não é específico de notificação) porque o mesmo problema existe em qualquer
+tela do sistema com ações restritas por `@PreAuthorize`.
+
+## Backend: `GET /api/v1/auth/me` agora retorna `authorities`
+
+```json
+{ "id": 1, "email": "admin@admin.com", "authorities": ["USER_VIEW", "EVENT_CREATE", "NOTIFICATION_SEND", ...] }
+```
+
+`AuthController.me()` mapeia `AuthenticatedUser.getAuthorities()` (a mesma lista que o Spring Security
+já usa para avaliar `@PreAuthorize` em cada requisição) para uma lista de strings. Nenhuma fonte de
+dado nova: é literalmente a mesma informação que o backend já carregava por requisição, só exposta.
+
+## Frontend: `src/modules/auth/*`
+
+- `auth.api.ts` / `auth.hooks.ts`: `useCurrentUser()` (`useQuery` sobre `/auth/me`, cacheado pelo
+  `@tanstack/react-query` como qualquer outra query do projeto — sem Context/Provider dedicado, porque
+  o react-query já dá o compartilhamento entre componentes que um Context daria aqui).
+- `useHasAuthority(authority: string): boolean` — o hook que qualquer componente usa:
+  ```tsx
+  const canSend = useHasAuthority("NOTIFICATION_SEND");
+  {canSend && <Button>Enviar notificação</Button>}
+  ```
+  Enquanto `/auth/me` ainda não respondeu, retorna `false` (falha fechado — some por padrão até
+  confirmar que pode, evita um flash do botão aparecendo e sumindo).
+
+## Onde já está em uso
+
+`NotificationBell.tsx`: o botão "Enviar notificação" só renderiza com `NOTIFICATION_SEND`. Validado
+manualmente revogando/restaurando a permissão em banco e conferindo `/api/proxy/auth/me` através do
+proxy do Next.js (não só direto no backend) — a lista de authorities muda corretamente nos dois
+sentidos.
+
+## Limitação que continua valendo
+
+Isso é **só uma camada de UX**, não de segurança — esconder um botão no client não impede ninguém com
+acesso a `curl`/DevTools de chamar o endpoint diretamente. A proteção de verdade continua sendo o
+`@PreAuthorize` no backend (que já existia antes disso e não mudou). `useHasAuthority` só evita
+oferecer, na interface, uma ação que o backend já ia recusar.
 
 ## Como uma feature futura reaproveitaria isso (ex: exportação de PDF)
 
@@ -282,18 +367,11 @@ disparar" de uma ação pontual, então a infraestrutura mais pesada de formulá
 
 ## Limitações conhecidas (propositais, documentadas)
 
-- **`/api/ws-token` expõe o JWT completo ao JS do navegador** (trade-off explicado acima).
 - **Sem retry/DLQ no RabbitMQ** — mensagens que falham no consumo voltam pra fila indefinidamente
   (requeue automático do Spring AMQP em caso de exceção no listener).
 - **`GET /api/v1/notifications` não pagina** — retorna só as últimas 50; suficiente para um sino de
   notificações, mas um histórico completo precisaria do padrão de busca paginada já usado em outras
   entidades do projeto (`SearchRequest`/`SpecificationBuilder`).
-- **`POST /notifications/send` não tem permissão dedicada** — qualquer usuário autenticado pode
-  notificar qualquer outro usuário da mesma empresa. Aceitável para o estágio atual; se o projeto
-  precisar restringir "quem pode notificar quem" no futuro, o natural é criar um recurso/autoridade
-  dedicado (ex: `NOTIFICATION_SEND`) seguindo o mesmo padrão de `ModuleCode`/`ResourceEnum`/
-  `AuthorizationSeeder` já usado para as demais permissões do projeto.
-
 Nenhuma dessas limitações impede o uso real do recurso — a diferença desta versão para a v1 é que a
 tabela `notification`, a persistência e o roteamento por usuário via STOMP **já são produção-viáveis**;
 só a autenticação do WebSocket (item 1) tem uma melhoria natural pendente.
