@@ -7,6 +7,7 @@ import br.com.clientefacil.entity.NotificationDeadLetter;
 import br.com.clientefacil.entity.enums.NotificationTypeEnum;
 import br.com.clientefacil.repository.NotificationDeadLetterRepository;
 import br.com.clientefacil.repository.UserRepository;
+import br.com.clientefacil.service.EmailService;
 import br.com.clientefacil.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,10 +15,12 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +46,12 @@ public class NotificationDeadLetterListener {
     // só que num destino "/topic" (n:n) em vez de "/queue" (1:1, ver NotificationListener).
     public static final String DEAD_LETTER_DESTINATION = "/topic/system/dead-letters";
 
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
     private final NotificationDeadLetterRepository repository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_DLQ)
@@ -74,15 +80,24 @@ public class NotificationDeadLetterListener {
     // NotificationListener faz para o fluxo normal, só que sem depender do RabbitMQ para isso.
     // Best-effort: uma falha aqui (ex: nenhum admin cadastrado) não pode derrubar o processamento
     // da DLQ em si, então erros só são logados.
+    //
+    // Também dispara um e-mail (via EmailService -> fila própria de e-mail, companyId=null =
+    // config base do sistema) para quem tem DEAD_LETTER_VIEW e tem e-mail cadastrado — cobre o
+    // caso de ninguém estar com o painel aberto no momento da falha (ver "Limitações conhecidas"
+    // em docs/guides/1_messaging-and-websocket.md). Enfileirar o e-mail é best-effort igual ao resto deste
+    // método: uma falha ao publicar não pode derrubar o processamento da DLQ.
     private void notifyAdmins(NotificationDeadLetter deadLetter) {
         try {
-            List<Long> adminUserIds = userRepository.findUserIdsByResourceSignature(
+            List<Object[]> admins = userRepository.findIdAndEmailByResourceSignature(
                     ResourceEnum.DEAD_LETTER_VIEW.getSignature());
 
             String message = "Uma mensagem de notificação (motivo: %s) esgotou as tentativas de reprocessamento e caiu na fila de falhas (registro #%d)."
                     .formatted(deadLetter.getDsErrorReason(), deadLetter.getId());
 
-            for (Long adminUserId : adminUserIds) {
+            for (Object[] admin : admins) {
+                Long adminUserId = (Long) admin[0];
+                String adminEmail = (String) admin[1];
+
                 NotificationMessageDTO alert = new NotificationMessageDTO(
                         adminUserId, NotificationTypeEnum.ERROR, "Falha no processamento de notificação", message);
 
@@ -90,9 +105,30 @@ public class NotificationDeadLetterListener {
 
                 messagingTemplate.convertAndSendToUser(
                         String.valueOf(adminUserId), NotificationListener.NOTIFICATION_DESTINATION, notification);
+
+                sendEmailAlert(deadLetter, adminEmail);
             }
         } catch (Exception e) {
             log.warn("Não foi possível gerar a notificação de alerta para os administradores", e);
+        }
+    }
+
+    private void sendEmailAlert(NotificationDeadLetter deadLetter, String adminEmail) {
+        if (!StringUtils.hasText(adminEmail)) {
+            return;
+        }
+
+        try {
+            emailService.sendTemplated(null, adminEmail, "Cliente Fácil — Falha no processamento de mensageria",
+                    "dead-letter-alert", Map.of(
+                            "origin", deadLetter.getTpOrigin().name(),
+                            "deadLetterId", deadLetter.getId(),
+                            "reason", deadLetter.getDsErrorReason() != null ? deadLetter.getDsErrorReason() : "não informado",
+                            "deathCount", deadLetter.getNrDeathCount() != null ? deadLetter.getNrDeathCount() : "-",
+                            "failedAt", deadLetter.getDtFailedAt() != null ? deadLetter.getDtFailedAt().format(DATE_FORMAT) : "-"
+                    ));
+        } catch (Exception e) {
+            log.warn("Não foi possível enfileirar o e-mail de alerta para {}", adminEmail, e);
         }
     }
 

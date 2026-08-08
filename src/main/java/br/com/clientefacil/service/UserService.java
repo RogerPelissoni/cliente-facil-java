@@ -3,16 +3,19 @@ package br.com.clientefacil.service;
 import br.com.clientefacil.core.dto.UserRoleEnum;
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
 import br.com.clientefacil.core.support.SortBuilder;
+import br.com.clientefacil.dto.ChangePasswordRequest;
 import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.entity.User;
+import br.com.clientefacil.entity.enums.UserTokenTypeEnum;
 import br.com.clientefacil.mapper.UserMapper;
 import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.UserRepository;
 import br.com.clientefacil.search.UserSearchConfig;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,18 +24,46 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserService {
+
+    // Convite pode demorar a ser aberto (diferente do reset de senha, que é mais urgente) — ver
+    // UserTokenService.
+    private static final Duration EMAIL_CONFIRMATION_TTL = Duration.ofDays(7);
 
     private final UserRepository repository;
     private final PersonRepository personRepository;
     private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
+    private final UserTokenService userTokenService;
+    private final EmailService emailService;
+    private final String frontendUrl;
+
+    public UserService(
+            UserRepository repository,
+            PersonRepository personRepository,
+            ProfileRepository profileRepository,
+            PasswordEncoder passwordEncoder,
+            UserMapper mapper,
+            UserTokenService userTokenService,
+            EmailService emailService,
+            @Value("${app.frontend-url}") String frontendUrl
+    ) {
+        this.repository = repository;
+        this.personRepository = personRepository;
+        this.profileRepository = profileRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.mapper = mapper;
+        this.userTokenService = userTokenService;
+        this.emailService = emailService;
+        this.frontendUrl = frontendUrl;
+    }
 
     public Map<Long, String> keyValue() {
         return repository.keyValue()
@@ -78,7 +109,11 @@ public class UserService {
     public UserResponse create(UserRequest request) {
         User user = new User();
         fillEntityByRequest(user, request, true);
-        return mapper.toResponse(repository.save(user));
+        User saved = repository.save(user);
+
+        sendConfirmationEmail(saved);
+
+        return mapper.toResponse(saved);
     }
 
     public UserResponse update(Long id, UserRequest request) {
@@ -89,6 +124,47 @@ public class UserService {
 
     public void delete(Long id) {
         repository.delete(findEntityById(id));
+    }
+
+    // Self-service: diferente de update(), aqui a senha atual precisa ser confirmada antes de
+    // aceitar a troca — não passa por fillEntityByRequest porque essa é a única mudança permitida
+    // (não altera nome/e-mail/perfil).
+    public void changeMyPassword(Long userId, ChangePasswordRequest request) {
+        User user = findEntityById(userId);
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new RuntimeException("Senha atual incorreta");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        repository.save(user);
+    }
+
+    // Reenvia o e-mail de confirmação (ex: usuário perdeu o primeiro, ou o e-mail nunca chegou) —
+    // usado pelo botão na tela de usuários (ver UserController), visível só quando ainda não
+    // confirmado.
+    public void resendConfirmation(Long id) {
+        User user = findEntityById(id);
+
+        if (user.getDtEmailConfirmedAt() != null) {
+            throw new RuntimeException("E-mail já confirmado");
+        }
+
+        sendConfirmationEmail(user);
+    }
+
+    // Best-effort, igual ao resto do projeto que dispara e-mail a partir de um evento de negócio
+    // (ver NotificationDeadLetterListener.notifyAdmins): uma falha ao enfileirar não pode impedir a
+    // criação do usuário.
+    private void sendConfirmationEmail(User user) {
+        try {
+            String token = userTokenService.issue(user, UserTokenTypeEnum.EMAIL_CONFIRMATION, EMAIL_CONFIRMATION_TTL);
+
+            emailService.sendTemplated(user.getCompanyId(), user.getEmail(), "Cliente Fácil — Confirme seu e-mail",
+                    "email-confirmation", Map.of("confirmUrl", frontendUrl + "/auth/confirm-email?token=" + token));
+        } catch (Exception e) {
+            log.warn("Não foi possível enviar o e-mail de confirmação para {}", user.getEmail(), e);
+        }
     }
 
     private User findEntityById(Long id) {

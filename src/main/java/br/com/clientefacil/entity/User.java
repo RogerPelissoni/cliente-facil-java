@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -28,6 +30,12 @@ public class User extends AbstractAuditableTenantEntity {
     @Column(nullable = false)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
+
+    // Null = e-mail ainda não confirmado (login bloqueado, ver AuthService.login). Preenchido só via
+    // POST /auth/confirm-email, com o token enviado no momento da criação do usuário (ver
+    // UserService.sendConfirmationEmail).
+    @Column(name = "dt_email_confirmed_at")
+    private LocalDateTime dtEmailConfirmedAt;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

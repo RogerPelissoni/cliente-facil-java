@@ -1,5 +1,7 @@
 package br.com.clientefacil.dto;
 
+import java.time.LocalDateTime;
+
 public record UserResponse(
         Long id,
         String name,
@@ -12,6 +14,8 @@ public record UserResponse(
 
         String personName,
         String profileName,
-        String companyName
+        String companyName,
+
+        LocalDateTime dtEmailConfirmedAt
 ) {
 }

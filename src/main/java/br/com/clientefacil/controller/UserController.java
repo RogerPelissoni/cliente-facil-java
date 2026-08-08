@@ -1,5 +1,7 @@
 package br.com.clientefacil.controller;
 
+import br.com.clientefacil.core.security.util.SecurityUtil;
+import br.com.clientefacil.dto.ChangePasswordRequest;
 import br.com.clientefacil.dto.DefaultSearchRequest;
 import br.com.clientefacil.dto.UserRequest;
 import br.com.clientefacil.dto.UserResponse;
@@ -13,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +38,18 @@ public class UserController {
     @GetMapping("/key-value")
     public Map<Long, String> keyValue() {
         return service.keyValue();
+    }
+
+    // Sem @PreAuthorize por permissão de recurso, de propósito: troca a senha de quem já está
+    // autenticado (id resolvido pelo token, não por path), então "estar logado" já é a permissão —
+    // igual ao espírito de /auth/me.
+    @Operation(summary = "CHANGE_MY_PASSWORD")
+    @PatchMapping("/me/password")
+    public void changeMyPassword(@RequestBody @Valid ChangePasswordRequest request) {
+        Long userId = SecurityUtil.getAuthenticatedUserId()
+                .orElseThrow(() -> new AccessDeniedException("Não autenticado"));
+
+        service.changeMyPassword(userId, request);
     }
 
     @Operation(summary = "SCREEN")
@@ -98,5 +113,14 @@ public class UserController {
     @PreAuthorize("hasAuthority('USER_DELETE')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+
+    // Reaproveita USER_UPDATE: é uma ação de gestão sobre um usuário existente, não um recurso novo.
+    @Operation(summary = "RESEND_CONFIRMATION")
+    @PostMapping("/{id}/resend-confirmation")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public void resendConfirmation(@PathVariable Long id) {
+        service.resendConfirmation(id);
     }
 }

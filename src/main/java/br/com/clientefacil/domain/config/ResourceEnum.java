@@ -24,6 +24,14 @@ public enum ResourceEnum {
 
     DEAD_LETTER_VIEW("Mensageria - visualizar falhas (DLQ)", ModuleCode.CORE),
     DEAD_LETTER_RESOLVE("Mensageria - marcar falhas como resolvidas", ModuleCode.CORE),
+    DEAD_LETTER_TEST("Mensageria - disparar falha simulada para testar o pipeline de DLQ", ModuleCode.CORE),
+
+    // MAIL_CONFIG é um recurso singleton (config base do sistema + no máximo 1 config por
+    // empresa, ver mail_config), não uma lista de registros — por isso só duas permissões
+    // (visualizar / gerenciar), em vez do padrão CRUD de 4 usado pelas entidades normais do
+    // projeto (criar e editar são a mesma ação de "salvar a configuração").
+    MAIL_CONFIG_VIEW("Mensageria - visualizar configuração de e-mail", ModuleCode.CORE),
+    MAIL_CONFIG_MANAGE("Mensageria - gerenciar configuração de e-mail (salvar, excluir, testar)", ModuleCode.CORE),
 
     PERSON_VIEW("Pessoas - visualizar", ModuleCode.CORE),
     PERSON_CREATE("Pessoas - criar", ModuleCode.CORE),

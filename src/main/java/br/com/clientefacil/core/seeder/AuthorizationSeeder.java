@@ -10,6 +10,8 @@ import br.com.clientefacil.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,8 +21,14 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+// HIGHEST_PRECEDENCE: precisa rodar antes do CommandLineRunner do MainSeeder, que concede as
+// permissões default ao perfil Admin com base no que existir na tabela resource — sem essa ordem
+// garantida, num boot "de sorte" o MainSeeder pode rodar primeiro e ver a tabela vazia, deixando o
+// admin sem nenhuma permissão (Spring não garante ordem entre ApplicationRunner/CommandLineRunner
+// sem @Order explícito).
 @Component
 @RequiredArgsConstructor
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class AuthorizationSeeder implements ApplicationRunner {
 
     private final ModuleRepository moduleRepository;

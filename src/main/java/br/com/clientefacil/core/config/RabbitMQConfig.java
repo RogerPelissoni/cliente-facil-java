@@ -76,7 +76,7 @@ public class RabbitMQConfig {
     // Continuam inspecionáveis pelo painel do RabbitMQ (http://localhost:15672), mas também são
     // consumidas por NotificationDeadLetterListener, que grava um registro mínimo em banco
     // (notification_dead_letter) e emite um alerta em tempo real via WebSocket — reprocessamento
-    // automático continua fora do escopo, de propósito (ver docs/mensageria-e-websocket.md).
+    // automático continua fora do escopo, de propósito (ver docs/guides/1_messaging-and-websocket.md).
     @Bean
     public DirectExchange notificationDlx() {
         return new DirectExchange(NOTIFICATION_DLX);

@@ -2,7 +2,8 @@
 
 Guia de estudo sobre a implementação de mensageria assíncrona (RabbitMQ) e comunicação em tempo real
 (WebSocket/STOMP) no Cliente Fácil, usando como caso de uso real um sistema de **notificações
-persistidas por usuário**.
+persistidas por usuário**. Regras de negócio, limitações conhecidas e roadmap de todo o projeto ficam
+centralizados em `docs/product/`, não aqui.
 
 **Fluxo implementado:**
 
@@ -190,7 +191,7 @@ associado (conecta, mas nunca recebe nada endereçado a um usuário).
 > Trade-off que permanece, documentado por completude: o ticket ainda não está atado à sessão/IP de
 > quem o pediu (qualquer processo que capture o ticket dentro da janela de 30s consegue usá-lo uma vez).
 > Suficiente para o risco atual do projeto; endurecer mais isso teria retorno decrescente frente à
-> complexidade adicional.
+> complexidade adicional (catalogado em `docs/product/2_known-limitations.md`).
 
 #### `src/shared/providers/StompProvider.tsx` — infra genérica reutilizável
 Abre **uma única conexão STOMP** para toda a área autenticada (`dashboard/layout.tsx`), usando
@@ -352,8 +353,7 @@ sentidos.
 
 Isso é **só uma camada de UX**, não de segurança — esconder um botão no client não impede ninguém com
 acesso a `curl`/DevTools de chamar o endpoint diretamente. A proteção de verdade continua sendo o
-`@PreAuthorize` no backend (que já existia antes disso e não mudou). `useHasAuthority` só evita
-oferecer, na interface, uma ação que o backend já ia recusar.
+`@PreAuthorize` no backend (catalogado em `docs/product/2_known-limitations.md`).
 
 ## Como uma feature futura reaproveitaria isso (ex: exportação de PDF)
 
@@ -377,8 +377,9 @@ listener e o broker, sem nenhuma visibilidade de que algo está errado.
 ## O que foi configurado
 
 **Retry com backoff** (`application.yml`, `spring.rabbitmq.listener.simple.retry`): até 3 tentativas
-por mensagem, com espera crescente entre elas (1s, depois 2s, depois 4s) — dá tempo de uma falha
-transitória (ex: uma reconexão de banco) se resolver sozinha, sem martelar imediatamente.
+por mensagem (a 1ª imediata, depois 1s antes da 2ª e 2s antes da 3ª — `initial-interval: 1000` ×
+`multiplier: 2`) — dá tempo de uma falha transitória (ex: uma reconexão de banco) se resolver
+sozinha, sem martelar imediatamente.
 
 **Dead Letter Queue** (`RabbitMQConfig.java`): se mesmo após as 3 tentativas a mensagem continuar
 falhando, `default-requeue-rejected: false` faz o Spring rejeitá-la sem reenfileirar. A fila principal
@@ -398,7 +399,8 @@ Publicar uma mensagem que não corresponde ao formato de `NotificationMessageDTO
 exchange (ex: via `http://localhost:15672` → Exchanges → `clientefacil.notification.exchange` →
 Publish message, routing key `clientefacil.notification`, payload
 `{"userId": "não-é-um-número", "type": "INFO", "title": "x", "message": "y"}`) força uma falha de
-desserialização. Após ~7s (1+2+4 de backoff), a mensagem sai da fila principal e aparece na DLQ.
+desserialização. Após ~3s (1s + 2s de backoff entre as 3 tentativas), a mensagem sai da fila
+principal e aparece na DLQ.
 
 > Validado manualmente exatamente assim: a fila principal voltou a `0` mensagens e a DLQ recebeu a
 > mensagem malformada, confirmando que o loop infinito anterior não acontece mais.
@@ -510,19 +512,175 @@ Ação "Resolver" na tabela: `PATCH /notifications/dead-letters/{id}/resolve`, s
 
 ---
 
-## Limitações conhecidas (propositais, documentadas)
+# 📧 Parte 8 — Serviço de e-mail (SMTP dinâmico por empresa, iniciado pelo dead-letter)
 
-- **`GET /api/v1/notifications` não pagina** — retorna só as últimas 50; suficiente para um sino de
-  notificações, mas um histórico completo precisaria do padrão de busca paginada já usado em outras
-  entidades do projeto (`SearchRequest`/`SpecificationBuilder`). Deixado de fora de propósito: hoje
-  alimenta só o sino (modal simples), não uma tela de histórico — faz mais sentido implementar
-  paginação junto quando essa tela existir de verdade.
-- **O alerta de dead letter só existe dentro do app** (sino + broadcast em tempo real) — ninguém é
-  avisado se estiver deslogado quando a falha acontece. Enviar e-mail (e futuramente outros canais, tipo
-  Slack) é a evolução natural, mas é escopo novo: precisa de um serviço de envio de e-mail configurado
-  no projeto, que ainda não existe hoje e será necessário para outras finalidades além desta.
+A Parte 7 deixou documentado como limitação: o alerta de dead-letter só existia dentro do app (sino +
+broadcast), ninguém era avisado se estivesse deslogado. Esta parte resolve isso implementando um
+serviço de e-mail genérico — não amarrado só a dead-letter, pensado desde já para outros usos futuros
+(recuperação de senha, etc), com dead-letter sendo só o primeiro consumidor real.
 
-Nenhuma dessas limitações impede o uso real do recurso — a tabela `notification`, a persistência, o
-roteamento por usuário via STOMP (autenticado via ws-ticket), as permissões dedicadas, o retry/DLQ do
-RabbitMQ e o painel administrativo de dead letters (auditoria, alerta em tempo real, notificação real e
-resolução) **já são produção-viáveis**.
+## `mail_config` — SMTP multi-tenant com fallback pra config base
+
+Cada empresa pode ter sua própria configuração de SMTP, mas nem todo e-mail pertence a uma empresa
+(ex: alerta de dead-letter é infraestrutura do sistema, não de um tenant). Por isso `company_id` em
+`mail_config` é **nullable**: `NULL` = "config base" do sistema (usada por e-mails sem empresa
+associada), preenchido = config própria de uma empresa, que tem prioridade sobre a base quando existe
+(`MailConfigService.resolveEffectiveConfig`). Não por acaso isso espelha exatamente o mecanismo de
+fallback que o `tenantFilter` do Hibernate já usa (`company_id = :companyId OR company_id IS NULL`,
+ver `AbstractAuditableTenantEntity`) — uma config base fica automaticamente visível pra qualquer
+empresa autenticada sem lógica de query extra.
+
+Migrations: `V14_1__create_mail_encryption_type_enum.sql`, `V14_2__create_mail_config_table.sql`
+(índices únicos parciais garantem no máximo 1 config base e 1 por empresa). Entidade:
+`entity/MailConfig.java`. A senha SMTP (`ds_password`) é criptografada com AES-256/GCM
+(`core/crypto/MailPasswordConverter`, um `@Converter` JPA) — precisa ser reversível (diferente de
+senha de usuário, com hash), já que o `EmailListener` precisa da senha em claro pra autenticar no
+SMTP. Chave via `MAIL_CONFIG_ENCRYPTION_KEY` (mesmo padrão do `jwt.secret`).
+
+## Fila própria de e-mail, separada da fila de notificações
+
+`core/config/EmailRabbitMQConfig.java` cria um exchange/fila/DLX/DLQ dedicados
+(`clientefacil.email.*`), com o mesmo padrão de retry+DLQ da Parte 6. Deliberadamente **não**
+reaproveita a fila de notificações: o alerta de dead-letter já é gerado a partir do
+`NotificationDeadLetterListener`, então se o envio de e-mail também passasse pela fila/DLQ de
+notificação, uma falha sistêmica (ex: SMTP fora do ar) poderia realimentar esse mesmo pipeline. Filas
+separadas mantêm os dois domínios de infraestrutura independentes.
+
+- `messaging/EmailMessageDTO.java` / `EmailPublisher.java`: producer fire-and-forget, mesmo espírito
+  de `NotificationPublisher`.
+- `messaging/EmailListener.java` (consumer): resolve a config efetiva
+  (`MailConfigService.resolveEffectiveConfig`), monta um `JavaMailSenderImpl` **dinâmico** a cada
+  envio (não é um bean fixo — é isso que permite cada empresa ter seu próprio SMTP), renderiza o
+  template Thymeleaf e envia. Qualquer exceção aciona o retry+DLQ padrão do Spring AMQP.
+- `messaging/EmailDeadLetterListener.java`: consome a DLQ de e-mail. Reaproveita a mesma tabela/
+  entidade `notification_dead_letter` da Parte 7 (ganhou a coluna `tp_origin`,
+  `NOTIFICATION`/`EMAIL`, editada direto na migration `V13_4` já que o projeto ainda não estava em
+  produção) em vez de criar uma tabela dedicada — auditoria idêntica, mesmo tratamento defensivo do
+  header `x-death`. Também não republica outro e-mail pra avisar da própria falha (evita loop); o
+  aviso fica restrito ao broadcast `/topic/system/dead-letters` já existente.
+
+## `EmailService` — API reutilizável
+
+`service/EmailService.java` expõe `sendTemplated(companyId, to, subject, template, variables)` —
+qualquer feature do projeto usa isso pra disparar e-mail, sem lidar com RabbitMQ diretamente.
+Templates em `resources/templates/email/*.html` (Thymeleaf): `dead-letter-alert.html` (primeiro
+consumidor real) e `test-email.html` (usado pela rota de teste).
+
+`NotificationDeadLetterListener` (Parte 7) foi atualizado: além da notificação em tempo real e do
+registro em banco, agora também chama `emailService.sendTemplated(null, adminEmail, ...)` pra cada
+usuário com `DEAD_LETTER_VIEW` que tenha e-mail cadastrado — best-effort, mesma filosofia do resto do
+método.
+
+## Endpoints (`controller/MailConfigController.java`)
+
+CRUD da config base e da config da empresa autenticada, mais uma rota de teste (mesmo espírito de
+`POST /notifications/test`):
+
+- `GET/PUT/DELETE /api/v1/mail-configs/base` — config do sistema (`company_id IS NULL`)
+- `GET/PUT/DELETE /api/v1/mail-configs/company` — config da empresa autenticada
+- `POST /api/v1/mail-configs/test` — `{"scope": "BASE"|"COMPANY", "to": "..."}`, dispara um e-mail de
+  teste com a config resolvida (`202 Accepted`)
+
+Duas permissões (`MAIL_CONFIG_VIEW`, `MAIL_CONFIG_MANAGE`) em vez do padrão CRUD de 4 usado pelas
+entidades normais do projeto — `mail_config` é um recurso singleton (config base + no máximo 1 por
+empresa), não uma lista, então criar/editar são a mesma ação de "salvar a configuração".
+
+> Trade-off documentado por completude: a config base é protegida pela mesma `MAIL_CONFIG_MANAGE` da
+> config da própria empresa, não por um papel "super-admin" cross-tenant (que o projeto ainda não
+> modela) — qualquer empresa com essa permissão consegue alterar o envio de e-mails do sistema.
+> Aceitável na fase atual (pré-produção); catalogado em `docs/product/2_known-limitations.md` e
+> `docs/product/3_roadmap.md`.
+
+## Ambiente de dev: MailHog
+
+`docker-compose.yml` ganhou o serviço `mailhog` (SMTP mock, UI em `http://localhost:8025`) — qualquer
+e-mail enviado pela aplicação em dev cai lá, não é entregue de verdade. `MainSeeder` cria a config
+base automaticamente no primeiro start (se nenhuma existir) apontando pro MailHog, sem autenticação
+nem TLS. Pra receber de verdade num e-mail real, configure um SMTP de verdade via
+`PUT /api/v1/mail-configs/base` (ou `/company`).
+
+---
+
+# ⚙️ Parte 9 — Tela de Configurações (front) + simulação de falha sob demanda
+
+A Parte 8 fechou o backend de e-mail mas deixou o front sem nenhuma tela pra usar: nem a empresa
+conseguia configurar seu próprio SMTP, nem o usuário tinha como trocar a própria senha. Esta parte
+fecha essas duas pontas e ainda dá um jeito de provar, sob demanda, que o pipeline de retry+DLQ+
+alerta (Partes 6 e 7) está funcionando de verdade — sem precisar esperar uma falha real acontecer.
+
+## Botão de engrenagem → `/dashboard/settings`
+
+Um ícone (`Settings`, lucide-react) ao lado do `<NotificationBell />` no header
+(`app/dashboard/layout.tsx`), sempre visível — leva pra uma tela com dois cards.
+
+## Card "Configurações Gerais" — troca de senha self-service
+
+Não existia nenhum endpoint pra isso: o único update de usuário era o admin (`PUT
+/api/v1/users/{id}`), que não pede senha atual e não é o que um usuário comum deveria poder chamar
+pra si mesmo. Novo endpoint `PATCH /api/v1/users/me/password`
+(`UserController`/`UserService.changeMyPassword`) — sem `@PreAuthorize` de recurso (estar autenticado
+já é a permissão, id resolvido via `SecurityUtil`, mesmo espírito de `/auth/me`), exige a senha atual
+(`passwordEncoder.matches`) antes de aceitar a troca. Front: `modules/settings/*`.
+
+## Card "Configurações de E-mail" — só a config da própria empresa
+
+`modules/mailConfig/*`, visível só com `MAIL_CONFIG_VIEW` (campos e botões de salvar/testar somem
+sem `MAIL_CONFIG_MANAGE`). Gerencia só `/mail-configs/company` — a config base (sistema,
+cross-tenant) ficou de fora de propósito: não faz sentido misturar "configuração da minha empresa"
+com uma config que afeta o sistema inteiro na mesma tela de settings pessoal. Base continua fora do
+card por design — ganhou tela administrativa própria em `/dashboard/admin/mail-config` (ver
+`docs/guides/2_authentication.md`, que documenta essa tela — foi implementada junto com a rodada de
+autenticação), reaproveitando o mesmo `MailConfigCard` com um prop `scope`.
+
+### "Testar Conexão" com dados ainda não salvos
+
+O `POST /mail-configs/test` da Parte 8 só testa a config **já persistida** — não servia pro botão
+"Testar Conexão" do formulário, que precisa validar o que está digitado *agora*, antes de salvar.
+Novo endpoint síncrono `POST /mail-configs/test-draft` (`MailConfigDraftTestRequest` →
+`MailConfigService.testDraft`): monta um `MailConfig` **transiente** (nunca persistido) com os dados
+do formulário e envia de verdade, na hora — resposta 200/erro já na própria chamada HTTP, em vez do
+202 fire-and-forget do `/test`. Senha em branco no draft segue a mesma regra do save ("mantém a já
+salva"), resolvida a partir do scope (`resolvePersistedPassword`) — mas só é exigida se o formulário
+tiver um usuário preenchido; sem usuário (ex: MailHog, sem autenticação) o teste segue sem senha
+nenhuma, mesma regra de "auth só se tiver username" que o envio de verdade já aplica.
+
+A lógica de montar/enviar e-mail (JavaMailSenderImpl, template Thymeleaf) foi extraída do
+`EmailListener` pro novo `EmailSenderService`, reaproveitado tanto pelo fluxo assíncrono (fila) quanto
+por esse teste síncrono — sem duplicar a montagem do e-mail em dois lugares.
+
+## Painel `admin/dead-letters` — simular falha sob demanda
+
+Faltava uma forma de provar que o retry+DLQ+alerta (Partes 6 e 7) está 100% funcional sem esperar uma
+falha real (SMTP fora do ar, bug em produção) acontecer. Dois botões novos na página (`FlaskConical`/
+`Mail`, gated por uma permissão nova `DEAD_LETTER_TEST`) publicam uma mensagem com um valor-sentinela
+que o listener correspondente reconhece e rejeita de propósito, **antes** de tentar qualquer trabalho
+real:
+
+- `NotificationListener.SIMULATED_FAILURE_MESSAGE` — checado no início de `receive(...)`.
+- `EmailListener.SIMULATE_FAILURE_VARIABLE` — uma chave no `variables` do `EmailMessageDTO`, checada
+  antes de resolver config ou tocar em SMTP.
+
+Deliberado não adicionar um campo novo em `NotificationMessageDTO`/`EmailMessageDTO` pra isso — esses
+records são consumidos em vários pontos do sistema; um valor-sentinela dentro dos campos que já
+existem (`message`/`variables`) tem o mesmo efeito sem mexer no contrato. A falha esgota os 3 retries
+normalmente (~3s, `spring.rabbitmq.listener.simple.retry`) e cai na DLQ pelo caminho já existente —
+o front reinvalida a listagem ~4s depois do disparo pra já mostrar o registro novo sem refresh manual.
+Confirmado nesta rodada: a falha de origem `NOTIFICATION` dispara o alerta por e-mail (`DEAD_LETTER_VIEW`),
+a de origem `EMAIL` não (evita loop, comportamento já documentado na Parte 8).
+
+---
+
+## Regras de negócio, limitações e roadmap
+
+Movidos pra `docs/product/` (pasta única pra esse tipo de conteúdo em todo o projeto, não só
+mensageria) — evita a mesma informação ficando desatualizada em dois lugares:
+
+- `docs/product/1_business-rules.md` — regras de negócio (multi-tenant, permissões, retry/DLQ,
+  alerta por e-mail, etc.).
+- `docs/product/2_known-limitations.md` — trade-offs aceitos conscientemente.
+- `docs/product/3_roadmap.md` — o que ainda falta.
+
+A tabela `notification`, a persistência, o roteamento por usuário via STOMP (autenticado via
+ws-ticket), as permissões dedicadas, o retry/DLQ do RabbitMQ, o painel administrativo de dead
+letters e o serviço de e-mail (Parte 8) **já são produção-viáveis** — falta só configurar um SMTP
+real (ver roadmap).

@@ -44,4 +44,16 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
                     where r.signature = :signature
             """)
     List<Long> findUserIdsByResourceSignature(String signature);
+
+    // id + email juntos (em vez de duas queries separadas) pra evitar o risco de "zipar" duas
+    // listas independentes por índice, que quebraria silenciosamente se a ordem divergisse.
+    @Query("""
+                    select distinct u.id, u.email
+                    from User u
+                    join u.profile p
+                    join p.permissions pp
+                    join pp.resource r
+                    where r.signature = :signature
+            """)
+    List<Object[]> findIdAndEmailByResourceSignature(String signature);
 }
