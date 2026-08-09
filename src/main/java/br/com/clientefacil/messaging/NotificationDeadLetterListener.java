@@ -137,8 +137,11 @@ public class NotificationDeadLetterListener {
     // "x-death" é o header que o próprio RabbitMQ adiciona ao redirecionar uma mensagem para uma
     // DLQ (motivo, quantidade de tentativas, quando aconteceu). Parsing defensivo porque é uma
     // lista de mapas heterogênea cujo formato exato não é garantido pelo broker.
+    // Package-private (não private) só pra ser testável direto por NotificationDeadLetterListenerTest,
+    // sem precisar montar um Message real e mockar as outras 4 dependências da classe pra exercitar
+    // essa lógica de parsing isoladamente.
     @SuppressWarnings("unchecked")
-    private DeathInfo extractDeathInfo(Message message) {
+    DeathInfo extractDeathInfo(Message message) {
         try {
             Object header = message.getMessageProperties().getHeaders().get("x-death");
 
@@ -160,6 +163,6 @@ public class NotificationDeadLetterListener {
         return new DeathInfo(null, null, LocalDateTime.now());
     }
 
-    private record DeathInfo(String reason, Integer count, LocalDateTime failedAt) {
+    record DeathInfo(String reason, Integer count, LocalDateTime failedAt) {
     }
 }
