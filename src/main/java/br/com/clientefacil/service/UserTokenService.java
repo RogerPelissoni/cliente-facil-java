@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 
 // Mecânica de token de uso único, compartilhada entre confirmação de e-mail e recuperação de senha
 // (AuthService/UserService) — só gera/valida/expira, quem decide o que fazer com o User devolvido é
@@ -31,6 +32,13 @@ public class UserTokenService {
     private final UserTokenRepository repository;
 
     public String issue(User user, UserTokenTypeEnum type, Duration ttl) {
+        // Pedir duas vezes (ex: "esqueci minha senha" clicado de novo antes de usar o primeiro link)
+        // não pode deixar dois links simultaneamente válidos — invalida qualquer token do mesmo tipo
+        // ainda não usado antes de emitir o novo. Reaproveita dtUsedAt em vez de um estado novo
+        // ("invalidado" x "usado") — consume() já filtra por dtUsedAt IS NULL, então pra quem valida
+        // um link a diferença não importa: os dois significam "esse token não serve mais".
+        invalidateExistingTokens(user, type);
+
         String rawToken = generateRawToken();
 
         UserToken token = new UserToken();
@@ -41,6 +49,18 @@ public class UserTokenService {
         repository.save(token);
 
         return rawToken;
+    }
+
+    private void invalidateExistingTokens(User user, UserTokenTypeEnum type) {
+        List<UserToken> existing = repository.findAllByUserAndTpTypeAndDtUsedAtIsNull(user, type);
+
+        if (existing.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        existing.forEach(token -> token.setDtUsedAt(now));
+        repository.saveAll(existing);
     }
 
     // Erro único e genérico pros dois motivos de falha (não existe / já usado / expirado / tipo

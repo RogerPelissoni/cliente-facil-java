@@ -18,14 +18,17 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
   pauta se o rate limit por e-mail se mostrar insuficiente na prática.
 - [x] **Bloqueio de conta após N tentativas de login falhas** — implementado (5 senhas erradas
   seguidas bloqueiam por 15 minutos, `nr_failed_login_attempts`/`dt_locked_until` em `users`).
-- [ ] **Invalidar tokens antigos de `user_token` ao emitir um novo** — pedir recuperação de senha
-  duas vezes deixa dois links simultaneamente válidos (TTL curto reduz o risco, mas não zera).
+- [x] **Invalidar tokens antigos de `user_token` ao emitir um novo** — implementado
+  (`UserTokenService.issue` invalida qualquer token não usado do mesmo tipo pro mesmo usuário antes
+  de emitir o novo). Verificado ponta a ponta: pedir recuperação de senha duas vezes e confirmar que
+  o link mais antigo passa a responder "Link inválido ou expirado".
 - [ ] **Revogação de JWT** — hoje o token vale 24h (`jwt.expiration`) sem nenhum mecanismo de
   invalidar antes disso (nem logout revoga — só expira o cookie no navegador que pediu). Se um token
   vazar, fica válido até expirar sozinho. Opções: blocklist em Redis, tokens de vida mais curta +
   refresh token, ou aceitar o trade-off documentado.
-- [ ] **Política de complexidade de senha** — hoje só exige mínimo de 6 caracteres
-  (`ChangePasswordRequest`/`ResetPasswordRequest`), sem checar força.
+- [x] **Política de complexidade de senha** — implementado (`@StrongPassword`, uma regra só
+  reaproveitada em `UserRequest`/`ChangePasswordRequest`/`ResetPasswordRequest`: mínimo 8 caracteres,
+  com letra e número — deliberadamente sem exigir maiúscula/especial, ver javadoc da anotação).
 - [x] **Segredos hardcoded/com default fraco** — `jwt.secret` agora segue o mesmo padrão de
   `mail.config.encryption-key` (`${JWT_SECRET:valor-de-exemplo}`), e os dois têm um guard
   (`SecretConfigurationGuard`) que recusa subir a aplicação — não só loga um aviso — se o valor de
@@ -42,8 +45,10 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
   front nunca fala direto com o backend fora do proxy same-origin do Next.js
   (`src/app/api/proxy/[...path]/route.ts`). Só vira necessário no dia em que existir um app mobile,
   uma integração de terceiro, ou qualquer client que chame a API sem passar por esse proxy.
-- [ ] **Scan de vulnerabilidade de dependências** — sem Dependabot/`OWASP dependency-check`/Snyk
-  configurado em nenhum dos dois repositórios hoje.
+- [x] **Scan de vulnerabilidade de dependências** — `.github/dependabot.yml` nos dois repositórios
+  (maven/npm + github-actions), atualizações menores/patch agrupadas num PR só pra reduzir ruído. Só
+  passa a abrir PRs de verdade depois que o arquivo for parar no branch padrão de cada repositório no
+  GitHub — não é algo que roda localmente.
 - [ ] **HTTPS/HSTS** — ambiente atual é só HTTP local (dev). Fora de escopo até existir um domínio
   de produção de verdade, mas vale não esquecer.
 - [ ] Um papel "super-admin" cross-tenant pra proteger a config base de e-mail com permissão própria,

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Dependências do backend (pom.xml).
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Mantém as próprias actions usadas em .github/workflows/ci.yml em dia (actions/checkout,
+  # actions/setup-java, etc.) — mesma lógica de segurança, escopo diferente.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

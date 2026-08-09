@@ -1,10 +1,10 @@
 package br.com.clientefacil.core.dto;
 
+import br.com.clientefacil.core.validation.StrongPassword;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 public record ResetPasswordRequest(
         @NotBlank String token,
-        @NotBlank @Size(min = 6) String newPassword
+        @NotBlank @StrongPassword String newPassword
 ) {
 }

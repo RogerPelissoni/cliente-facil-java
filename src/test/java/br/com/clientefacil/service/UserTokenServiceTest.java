@@ -14,12 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,6 +65,34 @@ class UserTokenServiceTest {
         assertThat(saved.getDsTokenHash())
                 .isNotEqualTo(rawToken)
                 .matches("^[0-9a-f]{64}$");
+    }
+
+    @Test
+    void issueInvalidatesAnyExistingUnusedTokenOfTheSameTypeForTheSameUser() {
+        UserToken oldToken = new UserToken();
+        oldToken.setUser(user);
+        oldToken.setTpType(UserTokenTypeEnum.PASSWORD_RESET);
+        when(repository.findAllByUserAndTpTypeAndDtUsedAtIsNull(user, UserTokenTypeEnum.PASSWORD_RESET))
+                .thenReturn(List.of(oldToken));
+
+        service.issue(user, UserTokenTypeEnum.PASSWORD_RESET, Duration.ofHours(1));
+
+        // Mesmo mecanismo de "esse token não serve mais" que consume() já respeita (filtra por
+        // dtUsedAt IS NULL) — não precisa de um estado novo só pra isso.
+        assertThat(oldToken.getDtUsedAt()).isNotNull();
+        verify(repository).saveAll(List.of(oldToken));
+    }
+
+    @Test
+    void issueDoesNotTouchTokensOfADifferentType_orWithNoneToInvalidate() {
+        when(repository.findAllByUserAndTpTypeAndDtUsedAtIsNull(user, UserTokenTypeEnum.EMAIL_CONFIRMATION))
+                .thenReturn(List.of());
+
+        service.issue(user, UserTokenTypeEnum.EMAIL_CONFIRMATION, Duration.ofDays(7));
+
+        // Nada pra invalidar — nem chama saveAll (evita um round-trip ao banco à toa, caso comum:
+        // primeiro token emitido pra esse usuário/tipo).
+        verify(repository, never()).saveAll(any());
     }
 
     @Test

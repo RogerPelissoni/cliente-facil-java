@@ -47,6 +47,11 @@ Mensagem de "usuário não encontrado" e "senha errada" foi unificada em "Creden
 mesma rodada — mensagens diferentes por esse motivo específico também são uma forma de enumeração de
 usuários (descobrir quais e-mails têm conta tentando logar com eles).
 
+Toda senha nova (criação de usuário, troca self-service, reset via link) passa por `@StrongPassword`
+(`core/validation/`) — mínimo 8 caracteres, com letra e número. Uma anotação só, reaproveitada nos
+três DTOs (`UserRequest`/`ChangePasswordRequest`/`ResetPasswordRequest`) em vez de repetir a regra em
+cada um.
+
 ## 📧 Confirmação de e-mail
 
 Não existe cadastro público no sistema — todo usuário é criado por um admin (`POST /api/v1/users`,
@@ -98,13 +103,15 @@ Confirmação de e-mail e recuperação de senha usam a **mesma tabela** (`user_
 `UserTokenTypeEnum.EMAIL_CONFIRMATION`/`PASSWORD_RESET`) e o mesmo serviço
 (`service/UserTokenService.java`):
 
-- `issue(user, type, ttl)`: gera 32 bytes aleatórios (`SecureRandom`) → base64url — esse é o token
-  **cru**, que vai no link do e-mail. Só o **hash SHA-256** dele é persistido (`ds_token_hash`); o
-  cru nunca toca o banco.
+- `issue(user, type, ttl)`: primeiro invalida (marca `dtUsedAt = now()`) qualquer token do mesmo tipo
+  ainda não usado pra esse usuário — pedir recuperação de senha duas vezes não deixa dois links
+  simultaneamente válidos, só o mais recente funciona. Depois gera 32 bytes aleatórios
+  (`SecureRandom`) → base64url — esse é o token **cru**, que vai no link do e-mail. Só o **hash
+  SHA-256** dele é persistido (`ds_token_hash`); o cru nunca toca o banco.
 - `consume(rawToken, type)`: acha pelo hash, confere `dtUsedAt == null` (uso único), `dtExpiresAt` no
   futuro e o `type` batendo; marca `dtUsedAt = now()`. Erro único e genérico ("Link inválido ou
-  expirado") pros três motivos de falha — não vale a pena diferenciar pro chamador, e evita dar pista
-  de qual é o problema.
+  expirado") pros quatro motivos de falha (não existe, tipo errado, expirado, já usado/invalidado) —
+  não vale a pena diferenciar pro chamador, e evita dar pista de qual é o problema.
 
 Não é tenant-scoped (`AbstractAuditableEntity`, não `AbstractAuditableTenantEntity`) — é
 infraestrutura de autenticação, não dado de negócio de uma empresa, mesmo espírito não-tenant de
