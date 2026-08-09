@@ -85,7 +85,28 @@ logging:
     name: logs/application.log
   level:
     root: INFO
+    # Nível verboso de propósito — bom pra depurar em dev/docker/test. org.hibernate.orm.jdbc.bind em
+    # TRACE loga o VALOR de cada parâmetro de toda query (e-mail, hash de token, o que for), então
+    # esse bloco só vale fora de um perfil que pareça produção — ver o documento no fim do arquivo,
+    # que baixa esses três níveis quando prod/production/staging estiver ativo. Mesmo vocabulário de
+    # perfil "parece produção" usado por SecretConfigurationGuard.
     br.com.clientefacil: DEBUG
 
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+
+---
+# Documento separado (YAML multi-doc do Spring Boot) ativado só quando o perfil parecer produção —
+# sobrescreve os três níveis verbosos acima por algo que não loga SQL/parâmetro nem debug da
+# aplicação. Em dev/docker/test (ou sem nenhum perfil ativo) esse documento não é aplicado, e o
+# bloco `logging.level` lá em cima continua valendo como está.
+spring:
+  config:
+    activate:
+      on-profile: "prod | production | staging"
+
+logging:
+  level:
+    br.com.clientefacil: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

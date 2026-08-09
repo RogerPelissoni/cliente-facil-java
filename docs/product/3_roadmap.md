@@ -57,10 +57,13 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
 
 ## 📊 Observabilidade
 
-- [ ] **Log level fixo em DEBUG/TRACE pra qualquer ambiente** — `application.yml` tem só um arquivo,
-  sem separação por perfil; hoje `org.hibernate.SQL: DEBUG` e `org.hibernate.orm.jdbc.bind: TRACE`
-  valem mesmo com `SPRING_PROFILES_ACTIVE=docker`. Bom pra depurar agora, ruim (volume de log, e SQL
-  com dado sensível indo pro log) se essa mesma config for parar em produção sem revisão.
+- [x] **Log level fixo em DEBUG/TRACE pra qualquer ambiente** — implementado: `application.yml`
+  ganhou um segundo documento YAML (`spring.config.activate.on-profile: "prod | production |
+  staging"`, mesmo vocabulário de perfil do `SecretConfigurationGuard`) que baixa
+  `org.hibernate.SQL`/`org.hibernate.orm.jdbc.bind`/`br.com.clientefacil` pra WARN/WARN/INFO só
+  nesses perfis — em dev/docker/test (ou sem perfil ativo) continua tudo como estava. Verificado
+  subindo a aplicação de verdade com `SPRING_PROFILES_ACTIVE=prod`: zero linha de SQL/parâmetro no
+  log, só INFO.
 - [ ] **Correlação de requisição (trace/correlation ID)** — hoje não dá pra seguir uma requisição
   específica através de vários logs (ex: request HTTP → mensagem na fila → e-mail enviado). MDC do
   SLF4J ou Micrometer Tracing resolveriam.
