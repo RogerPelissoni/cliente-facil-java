@@ -76,8 +76,11 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
   `pnpm dev`. Nenhum dos dois é uma imagem de produção (build multi-stage, JRE mínimo, usuário
   não-root, `next build` + `next start` em vez do dev server). Bloqueador real pra qualquer deploy
   de verdade.
-- [ ] **CI/CD** — não existe nenhum pipeline (`.github/workflows` não existe em nenhum dos dois
-  repositórios). Nem build/test automático em PR, nem deploy automatizado.
+- [x] **CI rodando a suíte em cada push/PR** — `.github/workflows/ci.yml` (nos dois repositórios)
+  agora roda a suíte a cada push/PR (backend: `./mvnw test` com Postgres+RabbitMQ como `services` do
+  job, mesmas imagens/credenciais do `docker-compose.yml`; front: lint + `tsc --noEmit` + `pnpm test`).
+  **Deploy automatizado continua não existindo** — falta ainda além disso: imagem de produção (ver
+  item abaixo) e o pipeline de deploy em si.
 - [ ] **Separação de ambientes** (dev/staging/produção) — hoje só existe o `docker-compose.yml` de
   desenvolvimento, com um `application.yml` único.
 - [ ] **Backup automatizado do Postgres** — hoje o banco é só um volume Docker local
@@ -177,8 +180,7 @@ não só desenho).
   Mockito, sem tocar banco. Testcontainers (Postgres real, efêmero, por execução) cobriria coisas que
   só aparecem com JPA/Hibernate de verdade: mapeamento de coluna, o `tenantFilter` do Hibernate,
   constraints de banco (índices únicos parciais do `mail_config`, por exemplo).
-- [ ] **CI rodando a suíte em cada PR** — depende do item de CI/CD acima; sem isso, os 47 testes só
-  rodam se alguém lembrar de rodar `mvn test` manualmente.
+- [x] **CI rodando a suíte em cada PR** — ver "🚀 Infraestrutura & Deploy" acima.
 - [ ] **Teste de carga/performance** — nunca foi medido quantas notificações/e-mails por segundo o
   sistema aguenta, nem o comportamento sob muitas conexões WebSocket simultâneas.
 
