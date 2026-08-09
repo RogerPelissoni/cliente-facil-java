@@ -405,6 +405,13 @@ principal e aparece na DLQ.
 > Validado manualmente exatamente assim: a fila principal voltou a `0` mensagens e a DLQ recebeu a
 > mensagem malformada, confirmando que o loop infinito anterior não acontece mais.
 
+Pra testar sob volume (não só uma mensagem) existe `scripts/rabbitmq-burst-test.sh` — publica um
+lote grande direto na fila (com uma fração falhando de propósito) e confirma que toda mensagem
+termina em exatamente um lugar (sucesso ou dead-letter), sem perda. Achado real ao rodar: o listener
+tem concorrência 1 (default, nada configurado), então cada falha trava a única thread pelos ~3s
+inteiros do backoff antes de desistir — 150 mensagens com 20% de falha levaram ~100s pra drenar. Ver
+`docs/product/3_roadmap.md` ("Teste de burst do pipeline RabbitMQ").
+
 ---
 
 # 🪦 Parte 7 — Consumindo a DLQ: auditoria em banco + alerta em tempo real

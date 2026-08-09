@@ -194,8 +194,20 @@ não só desenho).
   só aparecem com JPA/Hibernate de verdade: mapeamento de coluna, o `tenantFilter` do Hibernate,
   constraints de banco (índices únicos parciais do `mail_config`, por exemplo).
 - [x] **CI rodando a suíte em cada PR** — ver "🚀 Infraestrutura & Deploy" acima.
-- [ ] **Teste de carga/performance** — nunca foi medido quantas notificações/e-mails por segundo o
-  sistema aguenta, nem o comportamento sob muitas conexões WebSocket simultâneas.
+- [x] **Teste de burst do pipeline RabbitMQ (parcial)** — `scripts/rabbitmq-burst-test.sh`: publica
+  um volume de mensagens direto na fila (bypassando a API HTTP), com uma fração falhando de
+  propósito, e confirma que toda mensagem termina em exatamente um lugar (sucesso ou dead-letter),
+  sem perda. Deliberadamente **não** é benchmark de throughput/latência (p95/p99) — sem número-alvo
+  definido pro negócio, medir contra nada seria teatro; isso valida robustez, não performance.
+  **Achado real**: o listener de notificação roda com concorrência 1 (nenhum
+  `spring.rabbitmq.listener.simple.concurrency` configurado) — cada mensagem que falha trava essa
+  única thread pelos ~3s inteiros do backoff de retry antes de desistir. 150 mensagens com 20% de
+  falha (30 falhando) levaram ~100s pra drenar (~1,5 msg/s sob essa carga). Ainda não é um problema
+  pro volume esperado hoje, mas é o primeiro limite conhecido de throughput do sistema — vale
+  revisitar (`concurrency`/`max-concurrency` no listener) se o volume real de notificações crescer.
+- [ ] **Teste de carga/performance de verdade** (throughput sustentado, latência p95/p99, muitas
+  conexões WebSocket simultâneas) — ainda não medido. Só faz sentido com um número-alvo definido pro
+  negócio (ex: "aguentar X notificações/min"); sem isso, seria benchmark sem referência.
 
 ## 📘 API & Documentação
 
