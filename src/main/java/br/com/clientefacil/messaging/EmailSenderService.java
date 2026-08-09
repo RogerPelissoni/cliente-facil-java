@@ -2,6 +2,7 @@ package br.com.clientefacil.messaging;
 
 import br.com.clientefacil.entity.MailConfig;
 import br.com.clientefacil.entity.enums.MailEncryptionType;
+import br.com.clientefacil.messaging.template.EmailTemplate;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -30,6 +31,14 @@ import java.util.Properties;
 public class EmailSenderService {
 
     private final TemplateEngine templateEngine;
+
+    // Overload tipado — preferido por qualquer chamador síncrono novo (ver MailConfigService.testDraft).
+    // A versão (String, Map) abaixo continua existindo só porque EmailListener recebe os dois já
+    // desserializados do JSON da fila (EmailMessageDTO), onde o tipo do record se perde — ali não tem
+    // como recuperar o EmailTemplate original.
+    public void send(MailConfig config, List<String> to, String subject, EmailTemplate template) throws Exception {
+        send(config, to, subject, template.templateName(), template.toVariables());
+    }
 
     public void send(MailConfig config, List<String> to, String subject, String template, Map<String, Object> variables) throws Exception {
         String html = renderTemplate(template, variables);

@@ -138,7 +138,31 @@ usuário" — é uma decisão de segurança, não um detalhe técnico.)
 
 ---
 
-## Fase 6 — Fechando o quadro: por quê, não só como
+## Fase 6 — Como os templates de e-mail são tipados
+
+Depois de já ter visto 4 templates diferentes disparando (confirmação, recuperação de senha, teste,
+alerta de DLQ), vale entender como o projeto garante que o Java realmente passa o que cada `.html`
+espera — sem essa garantia, um typo numa chave de `Map` só aparece olhando o e-mail renderizado.
+
+**Leia**: `docs/guides/1_messaging-and-websocket.md`, Parte 10.
+
+**Faça** (mesmo espírito da Fase 3 — quebra de propósito e observa a rede de segurança pegar o erro):
+1. Abra `src/main/java/br/com/clientefacil/messaging/template/PasswordResetTemplate.java` e renomeie
+   `resetUrl` pra qualquer outro nome. Salve.
+2. Rode `./mvnw test -Dtest=EmailTemplateVariablesTest` — o build compila normal (é só um parâmetro
+   posicional), mas o teste falha, apontando exatamente o `.html` e o record em conflito.
+3. Desfaça a mudança, rode de novo — volta a passar.
+4. Abra `src/main/java/br/com/clientefacil/messaging/template/EmailConfirmationTemplate.java` e crie
+   um record novo qualquer nesse mesmo pacote (pode ser uma cópia sem sentido, só pra ver) — rode o
+   teste de novo: ele aparece na lista de testes descobertos automaticamente, sem você ter escrito
+   nenhuma linha de teste nova.
+
+**Checkpoint**: por que o teste instancia cada record com todos os campos `null` em vez de valores de
+verdade? (Resposta na Parte 10: só os *nomes* dos campos importam pra essa checagem, não os valores.)
+
+---
+
+## Fase 7 — Fechando o quadro: por quê, não só como
 
 Depois das fases acima (o "como"), vale a leitura mais rápida do "por quê" consolidado:
 
@@ -149,5 +173,5 @@ Depois das fases acima (o "como"), vale a leitura mais rápida do "por quê" con
   aqui, com o motivo.
 - `docs/product/3_roadmap.md` — o que ainda falta, caso queira continuar implementando a partir daqui.
 
-Nesse ponto, você já rodou de verdade cada peça do sistema — fila, retry, DLQ, tempo real, e-mail e
-autenticação — não só leu sobre elas.
+Nesse ponto, você já rodou de verdade cada peça do sistema — fila, retry, DLQ, tempo real, e-mail,
+autenticação e a rede de segurança de tipos por trás dos templates — não só leu sobre elas.

@@ -5,6 +5,7 @@ import br.com.clientefacil.domain.config.ResourceEnum;
 import br.com.clientefacil.dto.NotificationResponse;
 import br.com.clientefacil.entity.NotificationDeadLetter;
 import br.com.clientefacil.entity.enums.NotificationTypeEnum;
+import br.com.clientefacil.messaging.template.DeadLetterAlertTemplate;
 import br.com.clientefacil.repository.NotificationDeadLetterRepository;
 import br.com.clientefacil.repository.UserRepository;
 import br.com.clientefacil.service.EmailService;
@@ -119,14 +120,15 @@ public class NotificationDeadLetterListener {
         }
 
         try {
-            emailService.sendTemplated(null, adminEmail, "Cliente Fácil — Falha no processamento de mensageria",
-                    "dead-letter-alert", Map.of(
-                            "origin", deadLetter.getTpOrigin().name(),
-                            "deadLetterId", deadLetter.getId(),
-                            "reason", deadLetter.getDsErrorReason() != null ? deadLetter.getDsErrorReason() : "não informado",
-                            "deathCount", deadLetter.getNrDeathCount() != null ? deadLetter.getNrDeathCount() : "-",
-                            "failedAt", deadLetter.getDtFailedAt() != null ? deadLetter.getDtFailedAt().format(DATE_FORMAT) : "-"
-                    ));
+            var template = new DeadLetterAlertTemplate(
+                    deadLetter.getTpOrigin().name(),
+                    deadLetter.getId(),
+                    deadLetter.getDsErrorReason(),
+                    deadLetter.getNrDeathCount(),
+                    deadLetter.getDtFailedAt() != null ? deadLetter.getDtFailedAt().format(DATE_FORMAT) : "-"
+            );
+
+            emailService.sendTemplated(null, adminEmail, "Cliente Fácil — Falha no processamento de mensageria", template);
         } catch (Exception e) {
             log.warn("Não foi possível enfileirar o e-mail de alerta para {}", adminEmail, e);
         }

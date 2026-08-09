@@ -670,6 +670,73 @@ a de origem `EMAIL` não (evita loop, comportamento já documentado na Parte 8).
 
 ---
 
+# 🧩 Parte 10 — Templates de e-mail tipados
+
+Até aqui (Parte 8), `EmailService.sendTemplated(companyId, to, subject, template, variables)` recebia
+o nome do template como `String` solto e as variáveis como `Map<String, Object>` solto. Isso tem dois
+jeitos de dar errado, os dois **silenciosos**: Thymeleaf não lança exceção pra uma variável top-level
+ausente no contexto (`${confirmUrl}` sem `confirmUrl` no Map renderiza como string vazia, não como
+erro) — então nem uma chave errada por digitação (`Map.of("confirmURL", ...)`) nem um `.html` que
+passou a exigir uma variável nova são pegos em lugar nenhum. Só se descobre olhando o e-mail
+renderizado.
+
+## `EmailTemplate` — um record por `.html`
+
+`messaging/template/EmailTemplate.java`: interface com `templateName()` (nome do arquivo em
+`resources/templates/email/`, sem extensão) e um `toVariables()` (`default`, via reflection sobre os
+componentes do record — nenhum boilerplate por implementação). Cada template ganhou um record:
+
+```java
+public record EmailConfirmationTemplate(String confirmUrl) implements EmailTemplate {
+    public String templateName() { return "email-confirmation"; }
+}
+```
+
+`EmailService.sendTemplated`/`EmailSenderService.send` passaram a receber `EmailTemplate` em vez do
+par solto — o compilador garante o resto: passar a chave errada, ou um tipo errado, não compila mais.
+`EmailListener` (o consumer da fila) é a única exceção — continua com o overload `(String, Map)`
+antigo, porque só ele recebe os dois já desserializados do JSON da mensagem (`EmailMessageDTO`), onde
+o tipo do record se perde na travessia pela fila. Ele nunca constrói um `EmailTemplate`, só repassa o
+que já veio pronto.
+
+`DeadLetterAlertTemplate` (o mais complexo, 5 campos) também foi oportunidade de tirar uma duplicação:
+o Java formatava `"não informado"`/`"-"` como fallback pra `reason`/`deathCount` nulos, só que o
+`.html` já fazia exatamente isso (`${reason} ?: 'não informado'`) — o Java só precisou continuar
+formatando `failedAt` (o único campo sem fallback no template).
+
+## O problema que o tipo sozinho não resolve — e o teste que resolve
+
+Trocar `String`/`Map` por um record resolve "passar a chave errada" (agora é erro de compilação), mas
+**não** resolve "o `.html` passou a usar uma variável que nenhum record declara" — isso é HTML, não
+Java, o compilador não enxerga. Por isso `EmailTemplateVariablesTest`
+(`src/test/java/.../messaging/template/`): pra cada record que implementa `EmailTemplate`, lê o
+`.html` correspondente e confere que o conjunto de variáveis `${...}` usadas no arquivo é **exatamente
+igual** ao conjunto de componentes do record — sobrando ou faltando uma dos dois lados, o teste falha.
+
+Duas decisões de design pensadas especificamente pra não crescer 1:1 com o número de templates:
+
+- **Nenhuma lista manual de templates pra manter.** O teste descobre os records sozinho, via
+  `ClassPathScanningCandidateComponentProvider` (mesma classe que o Spring usa por baixo pra
+  `@ComponentScan`) filtrando por `AssignableTypeFilter(EmailTemplate.class)`. Um template novo (o
+  10º, o 500º) não pede nenhuma linha de teste — só o `.java` do record.
+- **Nenhum valor de exemplo pra inventar por tipo de campo.** O teste só precisa dos *nomes* dos
+  componentes (`RecordComponent.getName()`), não dos valores — então instancia cada record com
+  **todos os campos `null`**, via reflection sobre o construtor canônico. É por isso que a convenção
+  documentada no javadoc de `EmailTemplate` proíbe tipo primitivo nos records de template (`long` não
+  aceita `null` num `Constructor.newInstance`; `Long` aceita).
+
+Validado de propósito: renomeei `resetUrl` pra um nome errado em `PasswordResetTemplate` (o Java
+continuava compilando normal — é um parâmetro posicional) e confirmei que o teste falhava com uma
+mensagem apontando exatamente o `.html` e o record em conflito, antes de reverter.
+
+> Limitação documentada: a extração de variáveis do `.html` é uma regex simples
+> (`\$\{([a-zA-Z_][a-zA-Z0-9_]*)`) — pega `${nome}` e o primeiro identificador de `${nome.propriedade}`,
+> suficiente pros templates atuais (todos variáveis simples, sem navegação de propriedade). Um
+> template que precisasse de `${objeto.campo.aninhado}` continuaria funcionando normalmente em
+> produção, só o teste é que compararia pelo nome de `objeto`, não pelo caminho completo.
+
+---
+
 ## Regras de negócio, limitações e roadmap
 
 Movidos pra `docs/product/` (pasta única pra esse tipo de conteúdo em todo o projeto, não só

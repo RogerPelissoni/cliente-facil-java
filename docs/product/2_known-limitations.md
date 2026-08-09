@@ -19,6 +19,14 @@ importar.
 - **Configurar um SMTP real** (base ou por empresa) é uma ação do usuário, não do código — em dev,
   tudo aponta pro MailHog por padrão.
 
+## Templates de e-mail
+
+- **`EmailTemplateVariablesTest` extrai variáveis do `.html` por regex simples**, não parseia OGNL/
+  SpringEL de verdade — pega `${nome}` e o primeiro identificador de `${nome.propriedade}`. Suficiente
+  pros templates atuais (todos variáveis simples); um template que precisasse de navegação de
+  propriedade aninhada (`${objeto.campo}`) ainda funcionaria em produção normalmente, só o teste
+  compararia pelo nome de `objeto`, não pelo caminho completo.
+
 ## Autenticação
 
 - **Sem rate limit** em `/auth/forgot-password` nem `/auth/login` — alguém pode tentar várias vezes

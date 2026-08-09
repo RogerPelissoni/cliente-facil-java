@@ -10,6 +10,7 @@ import br.com.clientefacil.dto.UserResponse;
 import br.com.clientefacil.entity.User;
 import br.com.clientefacil.entity.enums.UserTokenTypeEnum;
 import br.com.clientefacil.mapper.UserMapper;
+import br.com.clientefacil.messaging.template.EmailConfirmationTemplate;
 import br.com.clientefacil.repository.PersonRepository;
 import br.com.clientefacil.repository.ProfileRepository;
 import br.com.clientefacil.repository.UserRepository;
@@ -159,9 +160,9 @@ public class UserService {
     private void sendConfirmationEmail(User user) {
         try {
             String token = userTokenService.issue(user, UserTokenTypeEnum.EMAIL_CONFIRMATION, EMAIL_CONFIRMATION_TTL);
+            var template = new EmailConfirmationTemplate(frontendUrl + "/auth/confirm-email?token=" + token);
 
-            emailService.sendTemplated(user.getCompanyId(), user.getEmail(), "Cliente Fácil — Confirme seu e-mail",
-                    "email-confirmation", Map.of("confirmUrl", frontendUrl + "/auth/confirm-email?token=" + token));
+            emailService.sendTemplated(user.getCompanyId(), user.getEmail(), "Cliente Fácil — Confirme seu e-mail", template);
         } catch (Exception e) {
             log.warn("Não foi possível enviar o e-mail de confirmação para {}", user.getEmail(), e);
         }

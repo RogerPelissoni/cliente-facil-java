@@ -8,6 +8,7 @@ import br.com.clientefacil.dto.MailConfigResponse;
 import br.com.clientefacil.dto.MailConfigTestRequest;
 import br.com.clientefacil.entity.MailConfig;
 import br.com.clientefacil.messaging.EmailSenderService;
+import br.com.clientefacil.messaging.template.TestEmailTemplate;
 import br.com.clientefacil.repository.MailConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -98,12 +98,10 @@ public class MailConfigService {
     // HTTP (diferente de sendTest, que enfileira e sempre responde 202).
     public void testDraft(MailConfigDraftTestRequest request) {
         MailConfig transientConfig = buildTransientConfig(request);
-
-        Map<String, Object> variables = Map.of("sentAt", LocalDateTime.now().format(DATE_FORMAT));
+        var template = new TestEmailTemplate(LocalDateTime.now().format(DATE_FORMAT));
 
         try {
-            emailSenderService.send(transientConfig, List.of(request.to()), "Cliente Fácil — e-mail de teste",
-                    "test-email", variables);
+            emailSenderService.send(transientConfig, List.of(request.to()), "Cliente Fácil — e-mail de teste", template);
         } catch (Exception e) {
             throw new RuntimeException("Falha ao testar conexão SMTP: " + e.getMessage(), e);
         }

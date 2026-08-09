@@ -5,6 +5,7 @@ import br.com.clientefacil.core.dto.AuthResponse;
 import br.com.clientefacil.core.dto.ResetPasswordRequest;
 import br.com.clientefacil.entity.User;
 import br.com.clientefacil.entity.enums.UserTokenTypeEnum;
+import br.com.clientefacil.messaging.template.PasswordResetTemplate;
 import br.com.clientefacil.repository.UserRepository;
 import br.com.clientefacil.service.EmailService;
 import br.com.clientefacil.service.UserTokenService;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -82,9 +82,9 @@ public class AuthService {
     public void forgotPassword(String email) {
         repository.findByEmail(email).ifPresentOrElse(user -> {
             String token = userTokenService.issue(user, UserTokenTypeEnum.PASSWORD_RESET, PASSWORD_RESET_TTL);
+            var template = new PasswordResetTemplate(frontendUrl + "/auth/reset-password?token=" + token);
 
-            emailService.sendTemplated(user.getCompanyId(), user.getEmail(), "Cliente Fácil — Recuperação de senha",
-                    "password-reset", Map.of("resetUrl", frontendUrl + "/auth/reset-password?token=" + token));
+            emailService.sendTemplated(user.getCompanyId(), user.getEmail(), "Cliente Fácil — Recuperação de senha", template);
         }, () -> log.info("Pedido de recuperação de senha para e-mail não cadastrado: {}", email));
     }
 
