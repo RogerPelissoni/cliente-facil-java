@@ -184,6 +184,12 @@
                 <artifactId>spotless-maven-plugin</artifactId>
                 <version>2.43.0</version>
                 <configuration>
+                    <!-- Explícito, não o default GIT_ATTRIBUTES: esse default cai no final de linha
+                         "nativo" do ambiente quando não há regra no .gitattributes pro arquivo — o
+                         que já causou um check verde localmente (autocrlf=true → CRLF) e vermelho no
+                         CI (Linux, sem autocrlf → LF) pro mesmo arquivo. UNIX fixo elimina a
+                         ambiguidade; complementado pelas regras eol=lf em .gitattributes. -->
+                    <lineEndings>UNIX</lineEndings>
                     <java>
                         <removeUnusedImports/>
                         <indent>

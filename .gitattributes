@@ -1,2 +1,13 @@
+# Sem isso, o core.autocrlf de quem commita decide o final de linha de tudo — nesta máquina
+# (autocrlf=true) isso resolvia pra CRLF, o Spotless concordava localmente ("GIT_ATTRIBUTES" sem
+# regra pra *.java cai no native do ambiente), e só quebrava no CI (Linux, sem autocrlf, LF) quando
+# alguém commitava um .java com CRLF sem perceber. `eol=lf` aqui fixa o final de linha do que importa
+# pro build/lint, independente de quem/onde commita.
+*.java text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.sql text eol=lf
+
 /mvnw text eol=lf
 *.cmd text eol=crlf
