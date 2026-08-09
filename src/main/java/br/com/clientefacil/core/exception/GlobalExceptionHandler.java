@@ -50,6 +50,16 @@ public class GlobalExceptionHandler {
     }
 
     @SuppressWarnings("unused")
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<?> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                "status", 429,
+                "error", "Muitas tentativas",
+                "message", ex.getMessage()
+        ));
+    }
+
+    @SuppressWarnings("unused")
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntime(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(

@@ -37,6 +37,13 @@ public class User extends AbstractAuditableTenantEntity {
     @Column(name = "dt_email_confirmed_at")
     private LocalDateTime dtEmailConfirmedAt;
 
+    // Bloqueio de conta após tentativas de senha errada seguidas (ver AuthService.login).
+    @Column(name = "nr_failed_login_attempts", nullable = false)
+    private int nrFailedLoginAttempts;
+
+    @Column(name = "dt_locked_until")
+    private LocalDateTime dtLockedUntil;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

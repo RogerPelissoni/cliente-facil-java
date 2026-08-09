@@ -34,3 +34,8 @@ build/
 
 ### Project ###
 logs/*
+
+# Spring Boot não carrega .env sozinho (ver .env.example), mas por precaução: nunca versionar um
+# real, só o .example.
+.env*
+!.env.example

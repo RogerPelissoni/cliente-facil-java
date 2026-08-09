@@ -18,6 +18,35 @@ JS do navegador nunca tem acesso direto a ele.
 `GET /api/v1/auth/me` devolve id/e-mail/authorities de quem está logado (usado por `useCurrentUser`/
 `useHasAuthority` no front) sem expor o JWT ao JS.
 
+## 🛡️ Rate limit, bloqueio de conta e segredos
+
+Três camadas de proteção em `/auth/login` e `/auth/forgot-password`, cada uma cobrindo um ângulo
+diferente:
+
+- **Rate limit** (`RateLimiter`, sliding window log em memória) — no máximo 5 tentativas de login e
+  3 pedidos de recuperação de senha por e-mail, por minuto/15 minutos respectivamente. A chave é o
+  **e-mail do request, não o IP** — o backend só enxerga o proxy same-origin do Next.js como origem
+  de rede (`api/login/route.ts`/`api/forgot-password/route.ts` fazem o fetch do lado do servidor),
+  então rate-limitar por IP juntaria todo mundo que passa por ali no mesmo balde. Checado *antes* de
+  olhar se o e-mail existe, nos dois endpoints — senão a própria resposta (429 só quando existe vs.
+  nunca) vira mais um jeito de descobrir quais e-mails têm conta. Excedeu o limite → `429 Too Many
+  Requests`. Reseta sozinho ao sair da janela, sem precisar de nenhuma ação.
+- **Bloqueio de conta** (`nr_failed_login_attempts`/`dt_locked_until` em `users`) — 5 senhas erradas
+  seguidas bloqueiam a conta por 15 minutos; qualquer login com senha certa zera o contador. Diferente
+  do rate limit acima: conta só falhas (não toda tentativa), persiste no banco (sobrevive a restart da
+  aplicação) e é por conta, não por janela de tempo — protege contra quem espalha as tentativas ao
+  longo de várias janelas de rate limit pra escapar dele.
+- **Segredos de exemplo travados fora de dev** (`SecretConfigurationGuard`) — `jwt.secret` e
+  `mail.config.encryption-key` têm um valor de exemplo hardcoded no `application.yml`, sobrescrito via
+  `JWT_SECRET`/`MAIL_CONFIG_ENCRYPTION_KEY`. Esse componente roda no boot e recusa subir a aplicação
+  (não só loga um aviso) se algum dos dois ainda estiver no valor de exemplo **e** o perfil ativo
+  parecer produção (`prod`/`production`/`staging`) — em dev, docker local, test, ou sem nenhum perfil
+  definido, continua só um aviso no log, sem travar nada do fluxo atual.
+
+Mensagem de "usuário não encontrado" e "senha errada" foi unificada em "Credenciais inválidas" nessa
+mesma rodada — mensagens diferentes por esse motivo específico também são uma forma de enumeração de
+usuários (descobrir quais e-mails têm conta tentando logar com eles).
+
 ## 📧 Confirmação de e-mail
 
 Não existe cadastro público no sistema — todo usuário é criado por um admin (`POST /api/v1/users`,

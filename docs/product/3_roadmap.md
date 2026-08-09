@@ -13,10 +13,11 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
 
 ## 🔐 Segurança
 
-- [ ] **Rate limit / captcha em `/auth/login` e `/auth/forgot-password`** — hoje nada impede tentar
-  várias vezes seguidas. Prioridade alta antes de expor a instância publicamente.
-- [ ] **Bloqueio de conta após N tentativas de login falhas** — complementa o rate limit; hoje uma
-  senha pode ser tentada indefinidamente (só limitado pela velocidade de quem tenta).
+- [x] **Rate limit em `/auth/login` e `/auth/forgot-password`** — implementado (`RateLimiter`, por
+  e-mail, ver `docs/guides/2_authentication.md`). Captcha continua não implementado — só entra em
+  pauta se o rate limit por e-mail se mostrar insuficiente na prática.
+- [x] **Bloqueio de conta após N tentativas de login falhas** — implementado (5 senhas erradas
+  seguidas bloqueiam por 15 minutos, `nr_failed_login_attempts`/`dt_locked_until` em `users`).
 - [ ] **Invalidar tokens antigos de `user_token` ao emitir um novo** — pedir recuperação de senha
   duas vezes deixa dois links simultaneamente válidos (TTL curto reduz o risco, mas não zera).
 - [ ] **Revogação de JWT** — hoje o token vale 24h (`jwt.expiration`) sem nenhum mecanismo de
@@ -25,13 +26,12 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
   refresh token, ou aceitar o trade-off documentado.
 - [ ] **Política de complexidade de senha** — hoje só exige mínimo de 6 caracteres
   (`ChangePasswordRequest`/`ResetPasswordRequest`), sem checar força.
-- [ ] **Segredos hardcoded/com default fraco** — `jwt.secret` (`application.yml`) é um valor fixo no
-  arquivo, **sem nenhuma variável de ambiente pra sobrescrever** hoje (diferente de
-  `MAIL_CONFIG_ENCRYPTION_KEY`, que ao menos já segue o padrão `${MAIL_CONFIG_ENCRYPTION_KEY:default-fraco}`
-  — melhor, mas ainda cai num valor conhecido se a env não for setada). Qualquer deploy real precisa
-  de `jwt.secret` vindo de env/cofre de segredos, nunca do valor versionado no repositório; e o ideal
-  é a aplicação recusar subir (não só logar um aviso) se rodar fora do perfil de dev com esses valores
-  de exemplo ainda ativos.
+- [x] **Segredos hardcoded/com default fraco** — `jwt.secret` agora segue o mesmo padrão de
+  `mail.config.encryption-key` (`${JWT_SECRET:valor-de-exemplo}`), e os dois têm um guard
+  (`SecretConfigurationGuard`) que recusa subir a aplicação — não só loga um aviso — se o valor de
+  exemplo ainda estiver ativo num perfil que pareça produção (`prod`/`production`/`staging`). Ainda
+  falta o próprio deploy real configurar `JWT_SECRET`/`MAIL_CONFIG_ENCRYPTION_KEY` via cofre de
+  segredos quando esse dia chegar — o guard só garante que não vai subir *silenciosamente* sem isso.
 - [ ] **Trilha de auditoria de ações sensíveis** — hoje só existe `created_by`/`updated_at`
   (`AbstractAuditableEntity`) por registro; não tem um log dedicado de "quem mudou a permissão de
   quem", "quem resetou a senha de quem", etc. Ver desenho detalhado (tabela `audit_log` genérica +
