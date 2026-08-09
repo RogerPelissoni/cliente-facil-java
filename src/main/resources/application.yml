@@ -47,6 +47,19 @@ springdoc:
   swagger-ui:
     persist-authorization: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        # Só o básico por enquanto — health (com detalhe, ver abaixo) e metrics (memória, threads,
+        # pool de conexão do Hikari, etc.). Sem prometheus/grafana no stack ainda (ver roadmap), não
+        # faz sentido expor formato Prometheus antes de existir algo pra consumir. Protegido por
+        # SYSTEM_METRICS_VIEW (ver SecurityConfig) — não é público.
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
 jwt:
   # Valor de exemplo abaixo, sobrescrito via env — mesmo padrão de mail.config.encryption-key.
   # Diferente dos outros segredos de dev deste arquivo, esse aqui também é verificado em runtime
@@ -61,6 +74,17 @@ app:
   # recuperação de senha nos templates (ver UserService/AuthService). Mesmo padrão de override via
   # env dos outros valores de dev acima.
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+
+  # DataRetentionService — limpeza automática do que já é lixo operacional (notificação lida,
+  # dead-letter resolvido, token gasto/expirado); nenhuma das três tabelas tinha rotina de limpeza
+  # antes disso, então cresciam pra sempre. Todo -days conta a partir de quando o registro virou
+  # "inativo" (lido/resolvido/usado-ou-expirado), não da criação.
+  data-retention:
+    notification-days: ${DATA_RETENTION_NOTIFICATION_DAYS:365}
+    dead-letter-days: ${DATA_RETENTION_DEAD_LETTER_DAYS:90}
+    user-token-days: ${DATA_RETENTION_USER_TOKEN_DAYS:30}
+    # Todo dia às 3h da manhã (horário de menor uso) — cron do Spring, 6 campos (com segundos).
+    cron: ${DATA_RETENTION_CRON:0 0 3 * * *}
 
 mail:
   config:

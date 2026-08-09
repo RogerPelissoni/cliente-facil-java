@@ -14,4 +14,8 @@ public interface NotificationDeadLetterRepository
     long countByDtResolvedIsNotNull();
 
     long countByCreatedAtAfter(LocalDateTime threshold);
+
+    // Usado por DataRetentionService — "dt_resolved < threshold" já exclui pendentes (dt_resolved
+    // NULL) sozinho.
+    long deleteByDtResolvedBefore(LocalDateTime threshold);
 }

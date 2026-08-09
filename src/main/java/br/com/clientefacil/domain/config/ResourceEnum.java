@@ -51,7 +51,12 @@ public enum ResourceEnum {
     USER_VIEW("Usuários - visualizar", ModuleCode.CORE),
     USER_CREATE("Usuários - criar", ModuleCode.CORE),
     USER_UPDATE("Usuários - editar", ModuleCode.CORE),
-    USER_DELETE("Usuários - excluir", ModuleCode.CORE);
+    USER_DELETE("Usuários - excluir", ModuleCode.CORE),
+
+    // Protege /actuator/** (ver SecurityConfig) — não é uma permissão de negócio, é acesso a
+    // métrica/saúde da infraestrutura em si (JVM, pool de conexão, etc.), então fica de fora do
+    // padrão CRUD de 4 permissões usado pelas entidades normais.
+    SYSTEM_METRICS_VIEW("Sistema - visualizar métricas e saúde da aplicação (Actuator)", ModuleCode.CORE);
 
     private final String description;
     private final ModuleCode module;

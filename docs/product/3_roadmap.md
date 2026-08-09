@@ -67,10 +67,13 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
 - [ ] **Correlação de requisição (trace/correlation ID)** — hoje não dá pra seguir uma requisição
   específica através de vários logs (ex: request HTTP → mensagem na fila → e-mail enviado). MDC do
   SLF4J ou Micrometer Tracing resolveriam.
-- [ ] **Métricas** — `spring-boot-starter-actuator` já está no classpath (`pom.xml`), mas sem
-  `management.endpoints.web.exposure` configurado (só o `/actuator/health` básico funciona hoje).
-  Métricas de verdade (profundidade de fila, latência por endpoint, taxa de erro) precisariam de
-  Micrometer + Prometheus/Grafana.
+- [x] **Métricas (básico)** — `management.endpoints.web.exposure.include: health,info,metrics`
+  ativado, protegido por autoridade nova (`SYSTEM_METRICS_VIEW`, ver `SecurityConfig`) — nada em
+  `/actuator/**` é público, nem `/health` (nenhum load balancer real depende disso hoje; o healthcheck
+  do docker-compose é TCP puro). Verificado ao vivo: 401 sem token, 200 com token de admin, métricas
+  de verdade (Hikari, executor, disco). Ainda falta o que pede Prometheus/Grafana de verdade
+  (profundidade de fila, latência por endpoint, taxa de erro, série histórica) — isso continua
+  precisando de Micrometer + um backend de métrica de verdade, não é só configuração.
 - [ ] **Alerta além do e-mail de dead-letter** — hoje o único alerta automático é o e-mail/notificação
   de DLQ (Parte 7 do guia de mensageria). Um erro não tratado em qualquer outro lugar do sistema só
   aparece no `logs/application.log` — sem Sentry (ou similar) rastreando exceções em produção.
@@ -99,9 +102,11 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
 
 ## 🗄️ Dados & Persistência
 
-- [ ] **Retenção/limpeza de `notification`, `notification_dead_letter`, `user_token`** — todas
-  crescem indefinidamente hoje, sem job de limpeza (ex: apagar notificações lidas há mais de 1 ano,
-  tokens expirados há mais de 30 dias). Sem isso, essas tabelas só crescem.
+- [x] **Retenção/limpeza de `notification`, `notification_dead_letter`, `user_token`** —
+  implementado (`DataRetentionService`, `@Scheduled` diário às 3h, dias configuráveis via
+  `app.data-retention.*`): notificação lida há mais de 365 dias, dead-letter resolvido há mais de 90,
+  token usado/expirado há mais de 30 — nunca algo ainda pendente de ação. Roda sem usuário
+  autenticado (job em background), então alcança todas as empresas de propósito.
 - [ ] **LGPD**: direito ao esquecimento (anonimizar/excluir dados de uma pessoa/empresa que pediu),
   portabilidade de dados (exportar tudo que o sistema guarda sobre um usuário). Relevante assim que o
   sistema tiver usuários/empresas reais e não for só uso interno.
@@ -221,8 +226,11 @@ específico do front, sem repetir nada deste documento.
 
 ## 🛠️ Qualidade de código / DX
 
-- [ ] **Formatador/linter no backend** — não existe Spotless/Checkstyle configurado no `pom.xml`
-  hoje; o estilo de código é mantido só por convenção manual.
+- [x] **Formatador/linter no backend** — Spotless configurado (`removeUnusedImports`, indentação,
+  trailing whitespace, newline final — deliberadamente sem reformatter opinativo tipo
+  google-java-format, que geraria um diff gigante não relacionado a nada). Ligado à fase `validate`,
+  então já roda em todo `mvn compile`/`test`/CI sem precisar de step separado. Codebase inteira já
+  passada por `spotless:apply` (99 arquivos, diff pequeno — a maioria só newline final faltando).
 - [ ] **Pre-commit hooks** (lint, format, testes rápidos antes do commit) — não existe em nenhum dos
   dois repositórios.
 - [ ] **Reavaliar editar nome/e-mail do próprio usuário** na tela de conta — adiado por decisão (ver

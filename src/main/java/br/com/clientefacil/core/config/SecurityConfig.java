@@ -59,6 +59,12 @@ public class SecurityConfig {
                         // acima, no frame STOMP CONNECT (que já pode carregar headers), via
                         // StompAuthChannelInterceptor — ver essa classe para detalhes.
                         .requestMatchers("/ws/**").permitAll()
+                        // Métrica/saúde da infraestrutura em si (JVM, pool de conexão, etc.), não é
+                        // permissão de negócio — sem carve-out público aqui de propósito: nada hoje
+                        // depende de /actuator/health estar acessível sem autenticação (o healthcheck
+                        // do docker-compose é TCP puro, não HTTP). Se um dia existir um load balancer
+                        // de verdade que precise de um /health público, decidir isso ali, não aqui.
+                        .requestMatchers("/actuator/**").hasAuthority("SYSTEM_METRICS_VIEW")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

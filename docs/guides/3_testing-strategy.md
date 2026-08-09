@@ -22,6 +22,10 @@ Spring Data/Hibernate, não o código do projeto.
 | `AuthorizationSeeder` (ordem de boot) | Bug real desta sessão: sem `@Order`, admin podia nascer sem nenhuma permissão | Alguém remove o `@Order` numa limpeza de imports e ninguém percebe até um deploy "de azar" |
 | `UserService` (guard clauses) | Reenviar confirmação pra quem já confirmou; trocar senha sem validar a atual | Guard clause removida por engano numa refatoração |
 | `EmailListener`/`NotificationListener` (sentinela de simulação) | Contrato documentado no javadoc: rejeitar *antes* de gastar uma tentativa real | Botão "Simular falha" do painel admin passa a consumir SMTP/DB de verdade |
+| `RateLimiter` | Sliding window log em memória, usado pra throttle de login/forgot-password | Janela que nunca reabre (trava usuário legítimo pra sempre) ou que nunca fecha (rate limit não funciona) |
+| `SecretConfigurationGuard` | Único ponto que decide "pode subir com segredo de exemplo ou não" | Aplicação sobe em produção com `jwt.secret`/`mail.config.encryption-key` conhecidos, sem ninguém notar |
+| `StrongPasswordValidator` | Regra única reaproveitada em 3 DTOs — um teste cobre os três usos | Regra de composição (letra+número, tamanho) afrouxada sem querer numa refatoração |
+| `DataRetentionService` | Threshold calculado errado apaga (ou nunca apaga) o que devia | `>=` virando `>` (ou vice-versa) silenciosamente muda "365 dias" pra "364" ou "nunca apaga nada" |
 
 ## Padrões usados
 
