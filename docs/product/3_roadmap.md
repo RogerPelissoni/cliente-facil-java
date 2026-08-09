@@ -177,8 +177,6 @@ não só desenho).
   Mockito, sem tocar banco. Testcontainers (Postgres real, efêmero, por execução) cobriria coisas que
   só aparecem com JPA/Hibernate de verdade: mapeamento de coluna, o `tenantFilter` do Hibernate,
   constraints de banco (índices únicos parciais do `mail_config`, por exemplo).
-- [ ] **Testes E2E do front** (Playwright/Cypress) — hoje a validação de fluxo completo (login →
-  ação → resultado) é manual.
 - [ ] **CI rodando a suíte em cada PR** — depende do item de CI/CD acima; sem isso, os 47 testes só
   rodam se alguém lembrar de rodar `mvn test` manualmente.
 - [ ] **Teste de carga/performance** — nunca foi medido quantas notificações/e-mails por segundo o
@@ -197,17 +195,9 @@ não só desenho).
 
 ## 🖥️ Frontend
 
-- [ ] **Acessibilidade (a11y)** — não foi auditado; sem checagem de contraste, navegação por teclado,
-  leitor de tela.
-- [ ] **Lint quebrado** — `npx eslint` falha hoje com "could not find plugin prettier" (a regra
-  `prettier/prettier` está configurada em `eslint.config.*` mas o plugin não está registrado/instalado)
-  — confirmado ao tentar rodar lint nesta sessão. Vale corrigir antes de depender de lint no CI.
-- [ ] **i18n** — todo o texto é português fixo, direto no componente (sem biblioteca de tradução).
-  Só importa se algum dia o produto for atender um mercado não-lusófono.
-- [ ] **Error boundary global / tratamento de erro consistente** — cada tela trata erro à sua
-  maneira hoje (toast via `useApiMutation`, mensagem inline no login, etc); não há uma malha de
-  segurança genérica pra erro não tratado em qualquer componente.
-- [ ] **Performance** — bundle size e code splitting nunca foram medidos/otimizados.
+Itens exclusivos de front (lint, a11y, i18n, error boundary, performance, testes E2E, etc.) saíram
+daqui — ver `docs/product/1_roadmap.md` no repositório `cliente-facil-next`, que cobre só o que é
+específico do front, sem repetir nada deste documento.
 
 ## 🏢 Negócio / Multi-tenant
 
