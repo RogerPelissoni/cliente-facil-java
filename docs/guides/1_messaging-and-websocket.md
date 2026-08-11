@@ -606,6 +606,10 @@ base automaticamente no primeiro start (se nenhuma existir) apontando pro MailHo
 nem TLS. Pra receber de verdade num e-mail real, configure um SMTP de verdade via
 `PUT /api/v1/mail-configs/base` (ou `/company`).
 
+> O retry+DLQ acima cobre "o que fazer depois que uma mensagem falhou". Falta a pergunta anterior:
+> "e se o SMTP estiver fora do ar, por que cada mensagem individual precisa descobrir isso do zero,
+> gastando um timeout de rede inteiro?" — ver `docs/guides/4_circuit-breaker-smtp.md`.
+
 ---
 
 # ⚙️ Parte 9 — Tela de Configurações (front) + simulação de falha sob demanda

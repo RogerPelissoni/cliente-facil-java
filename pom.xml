@@ -80,6 +80,13 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
+        <!-- RESILIENCE4J: circuit breaker do envio de e-mail (ver EmailListener) -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
         <!-- DEVTOOLS -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -67,13 +67,15 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
 - [ ] **Correlação de requisição (trace/correlation ID)** — hoje não dá pra seguir uma requisição
   específica através de vários logs (ex: request HTTP → mensagem na fila → e-mail enviado). MDC do
   SLF4J ou Micrometer Tracing resolveriam.
-- [x] **Métricas (básico)** — `management.endpoints.web.exposure.include: health,info,metrics`
-  ativado, protegido por autoridade nova (`SYSTEM_METRICS_VIEW`, ver `SecurityConfig`) — nada em
-  `/actuator/**` é público, nem `/health` (nenhum load balancer real depende disso hoje; o healthcheck
-  do docker-compose é TCP puro). Verificado ao vivo: 401 sem token, 200 com token de admin, métricas
-  de verdade (Hikari, executor, disco). Ainda falta o que pede Prometheus/Grafana de verdade
-  (profundidade de fila, latência por endpoint, taxa de erro, série histórica) — isso continua
-  precisando de Micrometer + um backend de métrica de verdade, não é só configuração.
+- [x] **Métricas (básico)** — `management.endpoints.web.exposure.include:
+  health,info,metrics,circuitbreakers,circuitbreakerevents` ativado, protegido por autoridade nova
+  (`SYSTEM_METRICS_VIEW`, ver `SecurityConfig`) — nada em `/actuator/**` é público, nem `/health`
+  (nenhum load balancer real depende disso hoje; o healthcheck do docker-compose é TCP puro).
+  Verificado ao vivo: 401 sem token, 200 com token de admin, métricas de verdade (Hikari, executor,
+  disco), estado do circuit breaker de e-mail (ver item de mensageria abaixo). Ainda falta o que pede
+  Prometheus/Grafana de verdade (profundidade de fila, latência por endpoint, taxa de erro, série
+  histórica) — isso continua precisando de Micrometer + um backend de métrica de verdade, não é só
+  configuração.
 - [ ] **Alerta além do e-mail de dead-letter** — hoje o único alerta automático é o e-mail/notificação
   de DLQ (Parte 7 do guia de mensageria). Um erro não tratado em qualquer outro lugar do sistema só
   aparece no `logs/application.log` — sem Sentry (ou similar) rastreando exceções em produção.
@@ -171,12 +173,16 @@ não só desenho).
 
 ## 📨 Mensageria & confiabilidade (complementa `1_messaging-and-websocket.md`)
 
-- [ ] **Retenção de dead-letters já resolvidos** — `notification_dead_letter` não tem limpeza
-  automática; registros resolvidos há muito tempo continuam ocupando a tabela pra sempre.
-- [ ] **Circuit breaker pro SMTP** — hoje é só retry+DLQ (Parte 6); se o SMTP configurado cair, cada
-  mensagem de e-mail individualmente martela 3 tentativas antes de desistir, em vez de "aprender" que
-  o SMTP está fora e falhar rápido pelas próximas mensagens até o circuito reabrir (Resilience4j
-  cobre isso).
+- [x] **Retenção de dead-letters já resolvidos** — implementado (`DataRetentionService.
+  purgeOldResolvedDeadLetters`, mesma rotina `@Scheduled` diária que já limpa `notification`/
+  `user_token`): dead-letter resolvido há mais de `deadLetterRetentionDays` dias é removido.
+- [x] **Circuit breaker pro SMTP** — implementado (Resilience4j, `docs/guides/4_circuit-breaker-smtp.md`):
+  um circuito por empresa/config (`email-smtp-<companyId|base>`) em volta do envio real no
+  `EmailListener`. Depois de falhas suficientes (config em `application.yml`), passa a rejeitar novas
+  tentativas na hora (`CallNotPermittedException`) em vez de gastar um timeout de rede a cada
+  mensagem — retry+DLQ da Parte 6 continua intacto, só decide *se* vale tentar, não *quantas vezes*.
+  Timeout explícito de SMTP (5s) também adicionado, sem o qual uma chamada real podia pendurar bem
+  mais que isso. Observável em `/actuator/circuitbreakers`/`circuitbreakerevents`.
 - [ ] **Confirmação de entrega de e-mail** — hoje é fire-and-forget (`EmailService.sendTemplated`);
   não há tratamento de bounce/reject do provedor SMTP, nem registro de "foi entregue de verdade".
 - [ ] **Preferências de notificação por usuário** — hoje todo usuário recebe toda notificação

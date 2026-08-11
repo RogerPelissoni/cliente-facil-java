@@ -63,6 +63,13 @@ public class EmailSenderService {
         return templateEngine.process("email/" + template, context);
     }
 
+    // Sem timeout explícito, o JavaMail usa o padrão do socket do SO (pode passar de um minuto
+    // parado numa conexão que nunca vai responder). Isso importa em dobro agora: é o que garante
+    // que uma chamada "de teste" do circuit breaker (HALF_OPEN) ou uma chamada antes do circuito
+    // acumular falhas suficientes pra abrir (CLOSED) falhe rápido em vez de travar a única thread
+    // do listener (ver EmailListener) por muito mais tempo que o backoff de retry inteiro.
+    private static final int SMTP_TIMEOUT_MS = 5_000;
+
     private JavaMailSenderImpl buildMailSender(MailConfig config) {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(config.getDsHost());
@@ -74,6 +81,9 @@ public class EmailSenderService {
         Properties props = sender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", String.valueOf(StringUtils.hasText(config.getDsUsername())));
+        props.put("mail.smtp.connectiontimeout", String.valueOf(SMTP_TIMEOUT_MS));
+        props.put("mail.smtp.timeout", String.valueOf(SMTP_TIMEOUT_MS));
+        props.put("mail.smtp.writetimeout", String.valueOf(SMTP_TIMEOUT_MS));
 
         if (config.getTpEncryption() == MailEncryptionType.SSL) {
             props.put("mail.smtp.ssl.enable", "true");

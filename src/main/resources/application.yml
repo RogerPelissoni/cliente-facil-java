@@ -51,14 +51,49 @@ management:
   endpoints:
     web:
       exposure:
-        # Só o básico por enquanto — health (com detalhe, ver abaixo) e metrics (memória, threads,
-        # pool de conexão do Hikari, etc.). Sem prometheus/grafana no stack ainda (ver roadmap), não
-        # faz sentido expor formato Prometheus antes de existir algo pra consumir. Protegido por
-        # SYSTEM_METRICS_VIEW (ver SecurityConfig) — não é público.
-        include: health,info,metrics
+        # Só o básico por enquanto — health (com detalhe, ver abaixo), metrics (memória, threads,
+        # pool de conexão do Hikari, etc.) e circuitbreakers (estado ao vivo do circuito de e-mail,
+        # ver EmailListener/resilience4j abaixo). Sem prometheus/grafana no stack ainda (ver
+        # roadmap), não faz sentido expor formato Prometheus antes de existir algo pra consumir.
+        # Protegido por SYSTEM_METRICS_VIEW (ver SecurityConfig) — não é público.
+        include: health,info,metrics,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: always
+
+# Circuit breaker do envio de e-mail — ver EmailListener.circuitBreakerName (uma instância por
+# empresa/base, criada sob demanda com esta config "default") e docs/guides/4_circuit-breaker-smtp.md.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        # Últimas 10 chamadas contam pra taxa de falha (em vez de uma janela de tempo) — mais
+        # previsível com volume baixo/irregular de e-mail, onde uma janela de tempo fixa poderia
+        # nunca acumular chamadas suficientes.
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        # Não decide nada com menos de 5 chamadas — evita abrir o circuito por coincidência (ex: 2
+        # falhas em 2 tentativas) logo depois de reiniciar a aplicação.
+        minimum-number-of-calls: 5
+        # Metade ou mais das últimas chamadas falhando = SMTP está mesmo fora, não foi um problema
+        # pontual.
+        failure-rate-threshold: 50
+        # Só volta a tentar depois de 30s aberto — tempo curto o suficiente pra um SMTP que caiu e
+        # voltou ser detectado rápido, longo o suficiente pra não martelar um que ainda está fora.
+        wait-duration-in-open-state: 30s
+        # Ao testar se o SMTP voltou (HALF_OPEN), permite só 3 chamadas reais antes de decidir
+        # fechar de novo o circuito ou reabrir — não volta a martelar em cheio de uma vez.
+        permitted-number-of-calls-in-half-open-state: 3
+        # Sem precisar de uma mensagem nova chegar pra "descobrir" que já pode testar de novo — o
+        # próprio Resilience4j agenda a transição OPEN -> HALF_OPEN sozinho.
+        automatic-transition-from-open-to-half-open-enabled: true
+        # Só falha de SMTP de verdade (conexão recusada, timeout, autenticação, envio rejeitado —
+        # tudo que o Spring embrulha em MailException) conta pro circuito. Erro de outra natureza
+        # (ex: template Thymeleaf malformado) continua falhando a mensagem normalmente (retry+DLQ),
+        # só não é tratado como "o SMTP está fora" — não tem por que abrir o circuito por um bug de
+        # template, que não se resolve sozinho só porque o circuito reabriu depois.
+        record-exceptions:
+          - org.springframework.mail.MailException
 
 jwt:
   # Valor de exemplo abaixo, sobrescrito via env — mesmo padrão de mail.config.encryption-key.

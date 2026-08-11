@@ -113,6 +113,10 @@ de `NotificationMessageDTO`? E por que ele nunca republica um alerta pela mesma 
 **Checkpoint**: por que "Testar Conexão" não passa pela fila de e-mail (`EmailPublisher`), diferente
 do envio real? (Resposta na Parte 9: precisa responder no mesmo request HTTP, síncrono.)
 
+**Opcional, pra ir além**: `docs/guides/4_circuit-breaker-smtp.md` — o que acontece quando o SMTP
+configurado cai de vez (não só uma falha isolada), e por que retry+DLQ sozinho não é suficiente pra
+isso.
+
 ---
 
 ## Fase 5 — Autenticação: confirmação de e-mail e recuperação de senha
