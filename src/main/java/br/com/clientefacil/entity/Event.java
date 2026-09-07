@@ -1,12 +1,14 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractSoftDeletableTenantEntity;
+import br.com.clientefacil.core.entity.SoftDelete;
 import br.com.clientefacil.entity.enums.EventStatusEnum;
 import br.com.clientefacil.entity.enums.EventTypeEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -15,7 +17,8 @@ import java.time.LocalDateTime;
 @Table(name = "event")
 @Getter
 @Setter
-public class Event extends AbstractAuditableTenantEntity {
+@SQLRestriction(SoftDelete.NOT_DELETED)
+public class Event extends AbstractSoftDeletableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

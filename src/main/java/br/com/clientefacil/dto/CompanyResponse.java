@@ -6,6 +6,8 @@ public record CompanyResponse(
 
         Long personId,
 
-        String personName
+        String personName,
+
+        Boolean flActive
 ) {
 }

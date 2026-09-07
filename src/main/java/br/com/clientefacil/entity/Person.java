@@ -1,11 +1,13 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractSoftDeletableTenantEntity;
+import br.com.clientefacil.core.entity.SoftDelete;
 import br.com.clientefacil.entity.enums.PersonGenderEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.util.HashSet;
@@ -15,7 +17,8 @@ import java.util.Set;
 @Table(name = "person")
 @Getter
 @Setter
-public class Person extends AbstractAuditableTenantEntity {
+@SQLRestriction(SoftDelete.NOT_DELETED)
+public class Person extends AbstractSoftDeletableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

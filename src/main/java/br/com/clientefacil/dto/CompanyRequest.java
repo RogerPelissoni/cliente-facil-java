@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record CompanyRequest(
         @NotBlank String name,
-        @NotNull Long personId
+        @NotNull Long personId,
+        Boolean flActive
 ) {
 }

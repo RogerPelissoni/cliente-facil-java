@@ -188,6 +188,10 @@ public class UserService {
         user.setProfile(profile);
         user.setCompanyId(request.companyId());
 
+        if (request.flActive() != null) {
+            user.setFlActive(request.flActive());
+        }
+
         if (isCreate) {
             user.setPassword(passwordEncoder.encode(request.password()));
             return;

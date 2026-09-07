@@ -18,6 +18,9 @@ CREATE TABLE account_receivable_movement
     created_at                              TIMESTAMP                                     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                              TIMESTAMP                                     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    -- null = ativo (ver core/entity/AbstractSoftDeletableTenantEntity).
+    deleted_at                              TIMESTAMP,
+
     CONSTRAINT fk_account_receivable_movement_account_receivable_id FOREIGN KEY (account_receivable_id) REFERENCES account_receivable (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_account_receivable_movement_account_receivable_movement_id FOREIGN KEY (reversal_account_receivable_movement_id) REFERENCES account_receivable_movement (id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_account_receivable_movement_company_id FOREIGN KEY (company_id) REFERENCES company (id) ON UPDATE CASCADE ON DELETE RESTRICT,

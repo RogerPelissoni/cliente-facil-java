@@ -39,6 +39,23 @@ importar.
   técnica: `User.name` é só um rótulo de conta (o dado real vive em `Person`); e-mail é o
   identificador de login e trocar exigiria um fluxo de reconfirmação. Avaliado e adiado por ora.
 
+## Soft delete (ver `docs/guides/5_soft-delete.md`)
+
+- **A proteção referencial hoje é genérica, via `ForeignKeyDeletionGuard`** (lê `ON DELETE RESTRICT`/
+  `CASCADE` do `information_schema`, não código hard-coded por entidade) — substituiu os 4 validators
+  manuais de uma rodada anterior. Efeito: **excluir um `User` ou uma `Company` fica bloqueado quase
+  sempre** (`created_by`/`updated_by` e `company_id` aparecem em quase toda tabela) — de propósito,
+  decisão consciente pra um sistema com dado financeiro. A via normal de "remover" um dos dois do dia
+  a dia é o flag `fl_active` (`users`/`company`), não a exclusão.
+- **Sem índice dedicado nas colunas de FK que o guard consulta, por enquanto** — decisão consciente
+  (volume de exclusões é baixo, ver tópico "Desempenho" no guia) a revisitar se isso virar gargalo de
+  verdade. `company_id` em si (usado também pelo `tenantFilter`, não só pelo guard) tem o mesmo gap,
+  mas é maior/anterior a esta funcionalidade.
+- **`AccountReceivable`/`AccountReceivableMovement` ganharam a coluna/mecanismo de soft delete, mas
+  não têm `service`/`controller` próprio ainda** — hoje só são alcançáveis via `EventService`, que já
+  usa `AccountReceivableValidator`. Vira relevante quando um CRUD dedicado for construído (ver
+  `docs/product/4_future-business-rules.md`) — nesse dia, reaproveitar o validador existente.
+
 ## Geral
 
 - **`useHasAuthority` é só uma camada de UX**, nunca a fonte de verdade de permissão — esconder um

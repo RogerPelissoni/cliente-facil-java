@@ -96,5 +96,9 @@ public class CompanyService {
 
         entity.setName(request.name());
         entity.setPerson(person);
+
+        if (request.flActive() != null) {
+            entity.setFlActive(request.flActive());
+        }
     }
 }

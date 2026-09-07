@@ -1,12 +1,14 @@
 package br.com.clientefacil.entity;
 
 import br.com.clientefacil.core.dto.UserRoleEnum;
-import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractSoftDeletableTenantEntity;
+import br.com.clientefacil.core.entity.SoftDelete;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -15,7 +17,8 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Getter
 @Setter
-public class User extends AbstractAuditableTenantEntity {
+@SQLRestriction(SoftDelete.NOT_DELETED)
+public class User extends AbstractSoftDeletableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +27,9 @@ public class User extends AbstractAuditableTenantEntity {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    // unique = true removido daqui: a unicidade agora é um índice PARCIAL (só entre ativos, ver
+    // V1_2__create_users_table.sql/users_email_key), que a anotação de coluna não consegue expressar.
+    @Column(nullable = false)
     private String email;
 
     @Column(nullable = false)
@@ -43,6 +48,9 @@ public class User extends AbstractAuditableTenantEntity {
 
     @Column(name = "dt_locked_until")
     private LocalDateTime dtLockedUntil;
+
+    @Column(name = "fl_active", nullable = false)
+    private Boolean flActive = true;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

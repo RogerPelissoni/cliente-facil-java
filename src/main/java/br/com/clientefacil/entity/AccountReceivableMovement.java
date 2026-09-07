@@ -1,12 +1,14 @@
 package br.com.clientefacil.entity;
 
-import br.com.clientefacil.core.entity.AbstractAuditableTenantEntity;
+import br.com.clientefacil.core.entity.AbstractSoftDeletableTenantEntity;
+import br.com.clientefacil.core.entity.SoftDelete;
 import br.com.clientefacil.entity.enums.AccountReceivableMovementPaymentTypeEnum;
 import br.com.clientefacil.entity.enums.AccountReceivableMovementTypeEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -15,7 +17,8 @@ import java.time.LocalDateTime;
 @Table(name = "account_receivable_movement")
 @Getter
 @Setter
-public class AccountReceivableMovement extends AbstractAuditableTenantEntity {
+@SQLRestriction(SoftDelete.NOT_DELETED)
+public class AccountReceivableMovement extends AbstractSoftDeletableTenantEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -16,6 +16,8 @@ public record UserResponse(
         String profileName,
         String companyName,
 
+        Boolean flActive,
+
         LocalDateTime dtEmailConfirmedAt
 ) {
 }

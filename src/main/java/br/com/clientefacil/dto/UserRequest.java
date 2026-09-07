@@ -23,6 +23,8 @@ public record UserRequest(
 
         @NotNull Long profileId,
 
-        @NotNull Long companyId
+        @NotNull Long companyId,
+
+        Boolean flActive
 ) {
 }

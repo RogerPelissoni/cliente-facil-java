@@ -113,32 +113,65 @@ Cada item tem uma nota de por que importa e, quando relevante, o que já foi con
   portabilidade de dados (exportar tudo que o sistema guarda sobre um usuário). Relevante assim que o
   sistema tiver usuários/empresas reais e não for só uso interno.
 
-### Soft delete + tabela de auditoria genérica
+### Soft delete (✅ Fase A) + tabela de auditoria genérica (Fase B, pendente)
 
 Recomendado com convicção maior que os outros itens desta lista, especificamente pra este sistema:
 já existe dado financeiro (`AccountReceivable`/`AccountReceivableMovement`), é multi-tenant B2B (cada
 empresa eventualmente vai querer/precisar de histórico), e o projeto está pré-produção — o momento
 mais barato de adicionar isso é agora (depois, com dado real em produção, vira migração + backfill,
-não só desenho).
+não só desenho). Soft delete (Fase A) já implementado; `audit_log` (Fase B) deliberadamente adiada —
+capturar `old_value`/`new_value` corretamente exige um listener nativo do Hibernate
+(`PreInsertEventListener`/`PreUpdateEventListener`/`PreDeleteEventListener`, sem precedente no
+projeto) pra evitar um SELECT extra por escrita, peça grande o bastante pra não misturar com a
+mudança de schema da Fase A.
 
-- [ ] **Soft delete nas entidades de negócio.** Encaixa no padrão que já existe: `AbstractAuditableEntity`/
-  `AbstractAuditableTenantEntity` já usa Hibernate `@Filter` pra isolamento de tenant
-  (`company_id = :companyId OR company_id IS NULL`) — soft delete é o mesmo mecanismo, mais um
-  filtro. Forma idiomática no Hibernate: `@SQLDelete` (reescreve o `DELETE` que o Hibernate geraria
-  pra um `UPDATE ... SET dt_deleted_at = now()`) + `@SQLRestriction`/`@Where`
-  (`dt_deleted_at IS NULL` em toda leitura, automático) — praticamente zero mudança nos ~11 services
-  que hoje só fazem `repository.delete(entity)`.
-  - **Onde vale**: `Client`, `Company`, `Person`, `Professional`, `Event`, `AccountReceivable`/
-    `AccountReceivableMovement`, `User` — entidades de negócio com relacionamento e histórico que
-    importa.
-  - **Onde não vale**: `Notification` (já é volume alto/efêmero), `NotificationDeadLetter` (log
-    operacional, não dado de negócio), `UserToken` (token de segurança — quanto antes sumir de
-    verdade, melhor), `MailConfig`/`Resource`/`Module`/`ProfilePermission` (configuração, não
-    histórico de negócio a preservar).
-  - **Trade-off**: índices únicos (`Client` por documento, `User.email`) precisam virar parciais
-    (`WHERE dt_deleted_at IS NULL`), senão não dá pra recriar um registro com o mesmo
-    e-mail/documento depois de "excluir" o antigo. Mesma disciplina de "não esquecer o filtro" que o
-    `tenantFilter` já exige hoje.
+- [x] **Soft delete nas entidades de negócio** — implementado (Fase A, ver
+  `docs/guides/5_soft-delete.md`): `@SQLDelete` (reescreve o `DELETE` que `repository.delete(entity)`
+  gerava pra um `UPDATE ... SET deleted_at = now()`) + `@SQLRestriction("deleted_at IS NULL")` em
+  toda leitura, automático — zero mudança nos services que já chamavam `repository.delete(...)`.
+  Escolhido em vez do `@Filter` que o `tenantFilter` já usa porque `@Filter` precisa ser ligado por
+  sessão e `TenantScopedRepositoryImpl.findById()` já contorna esse mecanismo com uma `CriteriaQuery`
+  manual — um soft-delete baseado em `@Filter` teria o mesmo buraco; `@SQLRestriction` não, por ser
+  estático. Pegadinha real encontrada testando ao vivo: `@SQLRestriction` declarado só numa
+  `@MappedSuperclass` não é herdado pelas subclasses nesta versão do Hibernate (6.4.4.Final) — precisou
+  ser repetido em cada entidade concreta (documentado no guia).
+  - **Onde está**: `Client`, `Company`, `Person`, `Professional`, `Event`, `AccountReceivable`/
+    `AccountReceivableMovement`, `User`.
+  - **Onde não está** (deliberado): `Notification`/`NotificationDeadLetter`/`UserToken` (já têm
+    retenção automática, ver item acima), `MailConfig`/`Profile`/`Resource`/`Module`/
+    `ProfilePermission` (configuração, não histórico).
+  - Índices únicos (`User.email`, `Client`/`Professional` por pessoa+empresa,
+    `AccountReceivable` por código+parcela+empresa) convertidos pra parciais
+    (`WHERE deleted_at IS NULL`) — senão um registro soft-deletado bloquearia pra sempre recriar
+    outro com a mesma chave.
+  - **Evolução**: os `*DeletionValidator` manuais (um por entidade, hard-coded) foram substituídos por
+    `core/hibernate/ForeignKeyDeletionGuard.java` — `PreDeleteEventListener` genérico que lê
+    `ON DELETE RESTRICT`/`CASCADE` direto do `information_schema`, sem código por entidade. Efeito
+    consciente: bloqueia excluir `User`/`Company` quase sempre (`created_by`/`updated_by`/`company_id`
+    aparecem em quase toda tabela) — resolvido com um flag `fl_active` novo em `users`/`company`
+    (mesmo papel que `Person.flActive` já tinha), a via normal de "remover" um dos dois no dia a dia.
+    Também resolve `CASCADE` (que tinha o mesmo problema do `RESTRICT` — parou de disparar sozinho):
+    cascateia soft delete/remoção física recursivamente pela árvore de FKs. Ver guia pro mecanismo
+    completo, incluindo o tópico "Desempenho" (índices deliberadamente não criados por ora).
+  - De quebra: `GlobalExceptionHandler` ganhou handlers dedicados pra `BusinessException` (409) e
+    `ResourceNotFoundException` (404) — antes os dois caíam no catch-all de 500 — e pra
+    `TransactionSystemException` (desembrulha a causa, necessário porque o guard lança de dentro de um
+    listener que só roda no commit da transação).
+  - Tentativas de eliminar `@SQLDelete`/`@SQLRestriction` repetidos nas 8 entidades: meta-anotação e
+    `@SoftDelete` nativo do Hibernate (checado até a versão mais recente, 7.4) esbarraram em
+    limitações reais e foram revertidas; trigger no Postgres foi descartado por decisão consciente
+    (duplicaria a fonte de verdade entre banco e código). **`@SQLDelete` acabou eliminado mesmo
+    assim**: o `ForeignKeyDeletionGuard` (já existia pra RESTRICT/CASCADE) passou a fazer o `UPDATE`
+    da própria entidade e vetar o `DELETE` físico do Hibernate — sem usar a anotação `@SoftDelete`
+    nativa, então sem a trava de `LAZY` que a derrubou. Só `@SQLRestriction` continua por entidade —
+    tentativa de automatizar também esse lado via `Interceptor`/`StatementInspector` (reescrita de SQL
+    texto) foi pesquisada e descartada: sem precedente de uso seguro na comunidade, e o modo de falha
+    (vazamento silencioso de dado excluído) é pior que o de esquecer uma anotação. Duas redes de
+    segurança em vez disso: `SoftDeletableEntitiesTest` garante via reflection que nenhuma entidade
+    soft-deletável fica sem `@SQLRestriction` correto nem reintroduz `@SQLDelete`;
+    `SoftDeleteBehaviorIntegrationTest` prova o comportamento real contra Postgres (cria + deleta cada
+    uma das 8 entidades, confirma que some da leitura mas continua existindo fisicamente) — não
+    depende de qual mecanismo está por trás. Ver guia pro relato completo.
 
 - [ ] **Tabela `audit_log` genérica** (`table`, `record_id`, `old_value`, `new_value`), em vez de
   Hibernate Envers (que cria uma tabela `_AUD` por entidade auditada — mais mágico, mais pesado de
