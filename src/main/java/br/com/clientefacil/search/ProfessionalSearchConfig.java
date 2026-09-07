@@ -18,7 +18,8 @@ public final class ProfessionalSearchConfig {
     public static final Map<String, SearchField> FILTER_FIELDS = Map.of(
             "id", new SearchField("id", SearchFieldType.LONG),
             "name", new SearchField("name", SearchFieldType.STRING),
-            "personId", new SearchField("person.id", SearchFieldType.LONG)
+            "personId", new SearchField("person.id", SearchFieldType.LONG),
+            "personName", new SearchField("person.name", SearchFieldType.STRING)
     );
 
     public static final Map<String, String> SORT_FIELDS = Map.of(
