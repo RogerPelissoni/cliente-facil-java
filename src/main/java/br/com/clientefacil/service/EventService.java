@@ -9,6 +9,7 @@ import br.com.clientefacil.dto.EventResponse;
 import br.com.clientefacil.dto.EventWithRelationsResponse;
 import br.com.clientefacil.entity.*;
 import br.com.clientefacil.entity.enums.AccountReceivableStatusEnum;
+import br.com.clientefacil.entity.enums.EventTypeEnum;
 import br.com.clientefacil.mapper.EventMapper;
 import br.com.clientefacil.repository.*;
 import br.com.clientefacil.search.EventSearchConfig;
@@ -98,35 +99,46 @@ public class EventService {
 
         createEventOwner(entity);
 
-        br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
-        AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
-        persistEventService(request, eventService, accountReceivable);
+        if (isService(request)) {
+            br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
+            AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
+            persistEventService(request, eventService, accountReceivable);
+        }
 
         return mapper.toResponse(entity);
     }
 
     public EventResponse update(Long id, EventRequest request) {
         Event entity = findEntityById(id);
-        Long accountReceivableId = entity.getEventService().getAccountReceivable().getId();
 
-        accountReceivableValidator.canUpdate(accountReceivableId);
+        if (entity.getEventService() != null) {
+            accountReceivableValidator.canUpdate(entity.getEventService().getAccountReceivable().getId());
+        }
 
         mapper.updateEntityFromRequest(request, entity);
         repository.save(entity);
 
-        br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
-        AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
-        persistEventService(request, eventService, accountReceivable);
+        if (isService(request)) {
+            br.com.clientefacil.entity.EventService eventService = getOrCreateEventService(entity);
+            AccountReceivable accountReceivable = persistAccountReceivable(request, eventService);
+            persistEventService(request, eventService, accountReceivable);
+        }
 
         return mapper.toResponse(entity);
     }
 
     public void delete(Long id) {
         Event entity = findEntityById(id);
-        Long accountReceivableId = entity.getEventService().getAccountReceivable().getId();
 
-        accountReceivableValidator.canDelete(accountReceivableId);
-        repository.delete(findEntityById(id));
+        if (entity.getEventService() != null) {
+            accountReceivableValidator.canDelete(entity.getEventService().getAccountReceivable().getId());
+        }
+
+        repository.delete(entity);
+    }
+
+    private boolean isService(EventRequest request) {
+        return request.tpEvent() == EventTypeEnum.SERVICE;
     }
 
     private Event findEntityById(Long id) {
