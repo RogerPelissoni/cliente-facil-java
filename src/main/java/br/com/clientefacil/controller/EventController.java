@@ -35,6 +35,17 @@ public class EventController {
         return new EventScreenResponse(events, kvClient, kvProfessional);
     }
 
+    @Operation(summary = "REPORT")
+    @PostMapping("/report")
+    @PreAuthorize("hasAuthority('EVENT_REPORT_VIEW') or hasAuthority('EVENT_REPORT_VIEW_ALL')")
+    public EventReportResponse report(@RequestBody EventReportFilterRequest request) {
+        EventReportDataResponse data = service.report(request);
+        Map<Long, String> kvClient = clientService.keyValue();
+        Map<Long, String> kvProfessional = professionalService.keyValue();
+
+        return new EventReportResponse(data.summary(), data.obEvent(), kvClient, kvProfessional);
+    }
+
     @Operation(summary = "SEARCH")
     @PostMapping("/search")
     @PreAuthorize("hasAuthority('EVENT_VIEW')")

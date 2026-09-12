@@ -19,6 +19,8 @@ public enum ResourceEnum {
     EVENT_CREATE("Eventos - criar", ModuleCode.CORE),
     EVENT_UPDATE("Eventos - editar", ModuleCode.CORE),
     EVENT_DELETE("Eventos - excluir", ModuleCode.CORE),
+    EVENT_REPORT_VIEW("Eventos - visualizar relatório (próprios eventos)", ModuleCode.CORE),
+    EVENT_REPORT_VIEW_ALL("Eventos - visualizar relatório de todos os usuários", ModuleCode.CORE),
 
     NOTIFICATION_SEND("Notificações - enviar para outros usuários", ModuleCode.CORE),
 

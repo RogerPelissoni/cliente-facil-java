@@ -1,14 +1,21 @@
 package br.com.clientefacil.service;
 
 import br.com.clientefacil.core.exception.ResourceNotFoundException;
+import br.com.clientefacil.core.security.entity.AuthenticatedUser;
 import br.com.clientefacil.core.security.util.SecurityUtil;
 import br.com.clientefacil.core.support.SortBuilder;
+import br.com.clientefacil.domain.config.ResourceEnum;
 import br.com.clientefacil.dto.DefaultSearchRequest;
+import br.com.clientefacil.dto.EventReportDataResponse;
+import br.com.clientefacil.dto.EventReportFilterRequest;
+import br.com.clientefacil.dto.EventReportItemResponse;
+import br.com.clientefacil.dto.EventReportSummaryResponse;
 import br.com.clientefacil.dto.EventRequest;
 import br.com.clientefacil.dto.EventResponse;
 import br.com.clientefacil.dto.EventWithRelationsResponse;
 import br.com.clientefacil.entity.*;
 import br.com.clientefacil.entity.enums.AccountReceivableStatusEnum;
+import br.com.clientefacil.entity.enums.EventStatusEnum;
 import br.com.clientefacil.entity.enums.EventTypeEnum;
 import br.com.clientefacil.mapper.EventMapper;
 import br.com.clientefacil.repository.*;
@@ -17,6 +24,7 @@ import br.com.clientefacil.validator.AccountReceivableValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -25,6 +33,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -78,6 +87,140 @@ public class EventService {
                 .stream()
                 .map(mapper::toResponse)
                 .toList();
+    }
+
+    public EventReportDataResponse report(EventReportFilterRequest request) {
+        Long ownerId = resolveReportOwnerId(request.ownerId());
+
+        List<Event> events = repository.findForReport(
+                request.dtStart(),
+                request.dtEnd(),
+                request.tpStatus(),
+                request.tpEvent(),
+                request.clientId(),
+                request.professionalId(),
+                ownerId
+        );
+
+        Map<Long, ReportOwnerInfo> ownersByEventId = findReportOwners(events);
+
+        EventReportSummaryResponse summary = buildReportSummary(events);
+        Page<EventReportItemResponse> page = buildReportPage(
+                events,
+                ownersByEventId,
+                request.pageOrDefault(),
+                request.sizeOrDefault()
+        );
+
+        return new EventReportDataResponse(summary, page);
+    }
+
+    // Sem EVENT_REPORT_VIEW_ALL, ignora ownerId do request e força o usuário autenticado.
+    private Long resolveReportOwnerId(Long requestedOwnerId) {
+        if (hasReportViewAll()) {
+            return requestedOwnerId;
+        }
+
+        return SecurityUtil.getAuthenticatedUserId()
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private boolean hasReportViewAll() {
+        return SecurityUtil.getAuthenticatedUser()
+                .map(AuthenticatedUser::getAuthorities)
+                .map(authorities -> authorities.stream()
+                        .anyMatch(authority -> authority.getAuthority()
+                                .equals(ResourceEnum.EVENT_REPORT_VIEW_ALL.getSignature())))
+                .orElse(false);
+    }
+
+    private Map<Long, ReportOwnerInfo> findReportOwners(List<Event> events) {
+        List<Long> eventIds = events.stream().map(Event::getId).toList();
+
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return repository.findOwnersByEventIds(eventIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> new ReportOwnerInfo((Long) row[1], (String) row[2]),
+                        (first, second) -> first // mais de um owner: fica o primeiro (ver EventRepository#findForReport)
+                ));
+    }
+
+    private record ReportOwnerInfo(Long userId, String userName) {
+    }
+
+    private EventReportSummaryResponse buildReportSummary(List<Event> events) {
+        double totalValue = events.stream()
+                .map(this::eventAccountReceivable)
+                .filter(Objects::nonNull)
+                .mapToDouble(AccountReceivable::getVlTotal)
+                .sum();
+
+        Map<EventStatusEnum, Long> countByStatus = events.stream()
+                .collect(Collectors.groupingBy(Event::getTpStatus, Collectors.counting()));
+
+        Map<EventTypeEnum, Long> countByType = events.stream()
+                .collect(Collectors.groupingBy(Event::getTpEvent, Collectors.counting()));
+
+        return new EventReportSummaryResponse(events.size(), totalValue, countByStatus, countByType);
+    }
+
+    // Pagina em memória: a lista já vem filtrada e completa de findForReport.
+    private Page<EventReportItemResponse> buildReportPage(
+            List<Event> events,
+            Map<Long, ReportOwnerInfo> ownersByEventId,
+            int page,
+            int size
+    ) {
+        List<EventReportItemResponse> items = events.stream()
+                .map(event -> toReportItem(event, ownersByEventId.get(event.getId())))
+                .toList();
+
+        int fromIndex = Math.min(page * size, items.size());
+        int toIndex = Math.min(fromIndex + size, items.size());
+
+        return new PageImpl<>(
+                items.subList(fromIndex, toIndex),
+                PageRequest.of(page, size),
+                items.size()
+        );
+    }
+
+    private EventReportItemResponse toReportItem(Event event, ReportOwnerInfo owner) {
+        Client client = eventClient(event);
+        Professional professional = eventProfessional(event);
+        AccountReceivable accountReceivable = eventAccountReceivable(event);
+
+        return new EventReportItemResponse(
+                event.getId(),
+                event.getDsTitle(),
+                event.getDtStart(),
+                event.getDtEnd(),
+                event.getTpStatus(),
+                event.getTpEvent(),
+                client != null ? client.getId() : null,
+                client != null ? client.getPerson().getName() : null,
+                professional != null ? professional.getId() : null,
+                professional != null ? professional.getPerson().getName() : null,
+                accountReceivable != null ? accountReceivable.getVlTotal() : null,
+                owner != null ? owner.userId() : null,
+                owner != null ? owner.userName() : null
+        );
+    }
+
+    private Client eventClient(Event event) {
+        return event.getEventService() != null ? event.getEventService().getClient() : null;
+    }
+
+    private Professional eventProfessional(Event event) {
+        return event.getEventService() != null ? event.getEventService().getProfessional() : null;
+    }
+
+    private AccountReceivable eventAccountReceivable(Event event) {
+        return event.getEventService() != null ? event.getEventService().getAccountReceivable() : null;
     }
 
     public EventWithRelationsResponse findById(Long id) {
