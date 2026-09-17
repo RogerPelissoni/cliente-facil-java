@@ -283,14 +283,8 @@ O projeto segue algumas convenções simples:
 
 # Roadmap
 
-Funcionalidades previstas para evolução do projeto:
-
-- Eventos assíncronos
-- Cache
-- Testes de integração
-- Observabilidade
-- Upload de arquivos
-- Melhorias na autorização
+O roadmap completo do projeto — técnico e de regras de negócio, incluindo a estrutura de dados-base
+para os módulos ainda não implementados — está em [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 

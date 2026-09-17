@@ -1,7 +1,7 @@
 # 🗑️ Soft delete
 
 Fase A do item "Soft delete + tabela de auditoria genérica" do roadmap
-(`docs/product/3_roadmap.md`) — trocar DELETE físico por um flag de exclusão em algumas entidades de
+(`docs/ROADMAP.md`) — trocar DELETE físico por um flag de exclusão em algumas entidades de
 negócio, feito agora porque o projeto ainda está pré-produção (o momento mais barato pra isso é antes
 de existir dado real em jogo). A Fase B (`audit_log` genérica, capturando snapshot de
 INSERT/UPDATE/DELETE) fica para uma rodada seguinte — não está implementada ainda.

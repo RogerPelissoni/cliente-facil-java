@@ -144,10 +144,10 @@ Corrigido com `@Order(Ordered.HIGHEST_PRECEDENCE)` no `AuthorizationSeeder`.
 
 ## Regras de negócio, limitações e roadmap
 
-Movidos pra `docs/product/` (pasta única pra esse tipo de conteúdo em todo o projeto):
+Movidos pra `docs/product/`/`docs/ROADMAP.md` (lugar único pra esse tipo de conteúdo em todo o
+projeto):
 
 - `docs/product/1_business-rules.md` — regras de negócio (confirmação obrigatória, tokens de uso
   único, etc.).
-- `docs/product/2_known-limitations.md` — trade-offs aceitos conscientemente (sem rate limit, tokens
-  antigos não invalidados, edição de e-mail/nome fora de escopo, etc.).
-- `docs/product/3_roadmap.md` — o que ainda falta.
+- `docs/ROADMAP.md` — trade-offs aceitos conscientemente (sem rate limit, tokens antigos não
+  invalidados, edição de e-mail/nome fora de escopo, etc.) e o que ainda falta.

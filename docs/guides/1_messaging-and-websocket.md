@@ -191,7 +191,7 @@ associado (conecta, mas nunca recebe nada endereçado a um usuário).
 > Trade-off que permanece, documentado por completude: o ticket ainda não está atado à sessão/IP de
 > quem o pediu (qualquer processo que capture o ticket dentro da janela de 30s consegue usá-lo uma vez).
 > Suficiente para o risco atual do projeto; endurecer mais isso teria retorno decrescente frente à
-> complexidade adicional (catalogado em `docs/product/2_known-limitations.md`).
+> complexidade adicional (catalogado em `docs/ROADMAP.md`, seção "Limitações conhecidas").
 
 #### `src/shared/providers/StompProvider.tsx` — infra genérica reutilizável
 Abre **uma única conexão STOMP** para toda a área autenticada (`dashboard/layout.tsx`), usando
@@ -353,7 +353,7 @@ sentidos.
 
 Isso é **só uma camada de UX**, não de segurança — esconder um botão no client não impede ninguém com
 acesso a `curl`/DevTools de chamar o endpoint diretamente. A proteção de verdade continua sendo o
-`@PreAuthorize` no backend (catalogado em `docs/product/2_known-limitations.md`).
+`@PreAuthorize` no backend (catalogado em `docs/ROADMAP.md`, seção "Limitações conhecidas").
 
 ## Como uma feature futura reaproveitaria isso (ex: exportação de PDF)
 
@@ -410,7 +410,7 @@ lote grande direto na fila (com uma fração falhando de propósito) e confirma 
 termina em exatamente um lugar (sucesso ou dead-letter), sem perda. Achado real ao rodar: o listener
 tem concorrência 1 (default, nada configurado), então cada falha trava a única thread pelos ~3s
 inteiros do backoff antes de desistir — 150 mensagens com 20% de falha levaram ~100s pra drenar. Ver
-`docs/product/3_roadmap.md` ("Teste de burst do pipeline RabbitMQ").
+`docs/ROADMAP.md` ("Teste de burst do pipeline RabbitMQ").
 
 ---
 
@@ -595,8 +595,8 @@ empresa), não uma lista, então criar/editar são a mesma ação de "salvar a c
 > Trade-off documentado por completude: a config base é protegida pela mesma `MAIL_CONFIG_MANAGE` da
 > config da própria empresa, não por um papel "super-admin" cross-tenant (que o projeto ainda não
 > modela) — qualquer empresa com essa permissão consegue alterar o envio de e-mails do sistema.
-> Aceitável na fase atual (pré-produção); catalogado em `docs/product/2_known-limitations.md` e
-> `docs/product/3_roadmap.md`.
+> Aceitável na fase atual (pré-produção); catalogado em `docs/ROADMAP.md` (seções "Limitações
+> conhecidas" e "Roadmap técnico").
 
 ## Ambiente de dev: MailHog
 
@@ -750,13 +750,12 @@ mensagem apontando exatamente o `.html` e o record em conflito, antes de reverte
 
 ## Regras de negócio, limitações e roadmap
 
-Movidos pra `docs/product/` (pasta única pra esse tipo de conteúdo em todo o projeto, não só
-mensageria) — evita a mesma informação ficando desatualizada em dois lugares:
+Movidos pra `docs/product/`/`docs/ROADMAP.md` (lugar único pra esse tipo de conteúdo em todo o
+projeto, não só mensageria) — evita a mesma informação ficando desatualizada em dois lugares:
 
 - `docs/product/1_business-rules.md` — regras de negócio (multi-tenant, permissões, retry/DLQ,
   alerta por e-mail, etc.).
-- `docs/product/2_known-limitations.md` — trade-offs aceitos conscientemente.
-- `docs/product/3_roadmap.md` — o que ainda falta.
+- `docs/ROADMAP.md` — trade-offs aceitos conscientemente e o que ainda falta.
 
 A tabela `notification`, a persistência, o roteamento por usuário via STOMP (autenticado via
 ws-ticket), as permissões dedicadas, o retry/DLQ do RabbitMQ, o painel administrativo de dead

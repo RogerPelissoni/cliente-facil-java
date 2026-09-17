@@ -61,7 +61,7 @@ esperando; nada se perde — é essa a vantagem de ser assíncrono via fila em v
 4. Tente chamar `POST /api/v1/notifications/send` mesmo assim pelo Swagger — `403`, mesmo sem o botão
    existir mais. Marque `NOTIFICATION_SEND` de volta no perfil.
 
-**Checkpoint**: por que o passo 4 dá 403 mesmo tendo escondido o botão? (Ver `docs/product/2_known-limitations.md` — `useHasAuthority` é só UX.)
+**Checkpoint**: por que o passo 4 dá 403 mesmo tendo escondido o botão? (Ver `docs/ROADMAP.md` — `useHasAuthority` é só UX.)
 
 ---
 
@@ -172,10 +172,9 @@ Depois das fases acima (o "como"), vale a leitura mais rápida do "por quê" con
 
 - `docs/product/1_business-rules.md` — as regras que guiaram as decisões de design em todas as fases
   anteriores, num lugar só.
-- `docs/product/2_known-limitations.md` — cada trade-off que você provavelmente notou durante os
-  exercícios (ex: ticket de WS não atado a IP, config base compartilhando permissão) já catalogado
-  aqui, com o motivo.
-- `docs/product/3_roadmap.md` — o que ainda falta, caso queira continuar implementando a partir daqui.
+- `docs/ROADMAP.md` — cada trade-off que você provavelmente notou durante os exercícios (ex: ticket
+  de WS não atado a IP, config base compartilhando permissão) já catalogado ali, com o motivo, além
+  do que ainda falta caso queira continuar implementando a partir daqui.
 
 Nesse ponto, você já rodou de verdade cada peça do sistema — fila, retry, DLQ, tempo real, e-mail,
 autenticação e a rede de segurança de tipos por trás dos templates — não só leu sobre elas.

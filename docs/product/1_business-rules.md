@@ -80,11 +80,11 @@ CRUD-4-permissões já visível no próprio código e não estão detalhados aqu
 - Troca de senha pelo próprio usuário logado (`/dashboard/settings`) exige confirmar a senha atual.
 - `User.name` é só um rótulo de conta — o dado "de verdade" da pessoa vive em `Person` (tela própria,
   `PERSON_UPDATE`). Editar o próprio e-mail/nome pela tela de conta está fora de escopo por decisão
-  (ver `2_known-limitations.md`).
+  (ver `docs/ROADMAP.md`).
 
 ## Ver também
 
 - `docs/guides/1_messaging-and-websocket.md` — como cada uma dessas regras foi implementada (RabbitMQ, STOMP,
   e-mail).
 - `docs/guides/2_authentication.md` — como a autenticação foi implementada.
-- `2_known-limitations.md`, `3_roadmap.md` — trade-offs aceitos e o que ainda falta.
+- `docs/ROADMAP.md` — trade-offs aceitos e o que ainda falta.

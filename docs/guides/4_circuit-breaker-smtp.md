@@ -22,7 +22,7 @@ Dois efeitos concretos disso, sem circuit breaker:
    várias mensagens na fila (ex: uma leva de recuperação de senha depois de um pico de uso), isso
    soma rápido.
 2. **A única thread do listener fica presa nisso.** O teste de burst do RabbitMQ já documentou (ver
-   `docs/product/3_roadmap.md`, seção Testes) que o listener de notificação roda com concorrência 1 —
+   `docs/ROADMAP.md`, seção Testes) que o listener de notificação roda com concorrência 1 —
    o de e-mail é igual. Enquanto uma tentativa de SMTP está pendurada, nenhuma outra mensagem da fila
    é processada, nem as de empresas cujo SMTP está funcionando normalmente.
 
