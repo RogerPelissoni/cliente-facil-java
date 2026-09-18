@@ -21,6 +21,7 @@ import br.com.clientefacil.mapper.EventMapper;
 import br.com.clientefacil.repository.*;
 import br.com.clientefacil.search.EventSearchConfig;
 import br.com.clientefacil.validator.AccountReceivableValidator;
+import br.com.clientefacil.validator.EventScheduleValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -50,6 +51,7 @@ public class EventService {
     private final ProfessionalRepository professionalRepository;
     private final EventMapper mapper;
     private final AccountReceivableValidator accountReceivableValidator;
+    private final EventScheduleValidator eventScheduleValidator;
 
     public Page<EventResponse> search(DefaultSearchRequest request) {
         Pageable pageable = PageRequest.of(
@@ -237,6 +239,15 @@ public class EventService {
     }
 
     public EventResponse create(EventRequest request) {
+        if (isService(request)) {
+            eventScheduleValidator.validateNoConflict(
+                    request.eventService().professionalId(),
+                    request.dtStart(),
+                    request.dtEnd(),
+                    null
+            );
+        }
+
         Event entity = mapper.toEntity(request);
         entity = repository.save(entity);
 
@@ -256,6 +267,15 @@ public class EventService {
 
         if (entity.getEventService() != null) {
             accountReceivableValidator.canUpdate(entity.getEventService().getAccountReceivable().getId());
+        }
+
+        if (isService(request)) {
+            eventScheduleValidator.validateNoConflict(
+                    request.eventService().professionalId(),
+                    request.dtStart(),
+                    request.dtEnd(),
+                    id
+            );
         }
 
         mapper.updateEntityFromRequest(request, entity);

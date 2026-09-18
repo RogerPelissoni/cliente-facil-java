@@ -364,9 +364,9 @@ mudança de schema da Fase A.
 
 ### 🖥️ Frontend
 
-Itens exclusivos de front (lint, a11y, i18n, error boundary, performance, testes E2E, etc.) ficam no
-roadmap do repositório `cliente-facil-next` — cobre só o que é específico do front, sem repetir nada
-deste documento.
+Itens exclusivos de front (lint, a11y, i18n, error boundary, performance, testes E2E, etc.) ficam em
+`docs/ROADMAP.md` do repositório `cliente-facil-next` — cobre só o que é específico do front, sem
+repetir nada deste documento.
 
 ### 🏢 Negócio / Multi-tenant
 
@@ -414,8 +414,16 @@ no-show), `EventTypeEnum` distingue atendimento de cliente vs. compromisso pesso
 (`APPOINTMENT`/`SERVICE`/`PERSONAL`), e `EventService` já vincula evento → cliente → profissional →
 `AccountReceivable`.
 
-- [ ] **Conflito de horário (double-booking)** — hoje não vi validação impedindo o mesmo profissional
-  ter dois eventos sobrepostos. É a regra mais básica de qualquer sistema de agenda.
+- [x] **Conflito de horário (double-booking)** — implementado (`EventScheduleValidator`, checagem via
+  `EventServiceRepository.existsOverlapping`): ao criar/editar um `Event` do tipo `SERVICE`, valida que
+  o profissional não tem outro evento não cancelado sobrepondo o mesmo intervalo (`dtStart`/`dtEnd`),
+  antes de qualquer persistência. Eventos `CANCELLED` não bloqueiam o horário; um evento em edição não
+  conflita consigo mesmo (`excludeEventId`). Front não precisou de nenhuma mudança: o pipeline
+  genérico de erro já existente (`http.util.ts` lê `data.message` do 409 → `ApiError` →
+  `useApiMutation.onError` → toast) já propaga a mensagem de conflito automaticamente pro formulário
+  de evento. Verificado ao vivo contra a API real: criar evento sobreposto pro mesmo profissional
+  retorna 409 com a mensagem amigável; horários encostados (fim de um = início do outro) não
+  conflitam; editar um evento mantendo seu próprio horário não dispara falso positivo.
 - [ ] **Horário de funcionamento** (da empresa e por profissional) + **bloqueio de agenda** (férias,
   folga, atestado) — pra não deixar agendar fora do expediente.
 - [ ] **Buffer entre atendimentos** (tempo de preparo/limpeza entre um evento e outro).
